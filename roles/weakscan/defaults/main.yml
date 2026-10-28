@@ -9,6 +9,7 @@ weakscan_cve: ""                         # CVE 編號，對應 cves/<編號>.yml
 weakscan_cve_file: ""                    # CVE 定義檔完整路徑，由 playbook 帶入
 weakscan_cve_search_paths: []            # 要搜尋的目錄，由 playbook 依產品帶入
 weakscan_cve_components: []              # 產品內含的元件，由 playbook 帶入 <產品>_components
+weakscan_cve_component_paths: {}         # 元件的實際位置，由 playbook 帶入 <產品>_component_paths
 weakscan_cve_extra_paths:                # 額外一定會搜的系統路徑
   - /usr/bin
   - /usr/sbin

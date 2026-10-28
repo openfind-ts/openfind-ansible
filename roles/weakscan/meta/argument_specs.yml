@@ -31,6 +31,10 @@ argument_specs:
         elements: str
         required: true
         description: 要搜尋的產品目錄
+      weakscan_cve_component_paths:
+        type: dict
+        default: {}
+        description: 元件的實際位置（元件名稱 → 目錄清單），有寫就只搜這些目錄
       weakscan_cve_extra_paths:
         type: list
         elements: str

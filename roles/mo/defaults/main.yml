@@ -17,3 +17,7 @@ mo_version: ""
 
 # 這個產品內含的元件，CVE 掃描（playbooks/cve_check.yml）只掃有列出的元件
 mo_components: [php]
+# 各元件的實際位置；有寫就只搜這些目錄，沒寫才搜整個安裝目錄
+mo_component_paths:
+  php:
+    - /mailgates/php/bin

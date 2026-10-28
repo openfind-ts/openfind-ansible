@@ -17,7 +17,7 @@
   block:
     - name: 搜尋元件執行檔
       ansible.builtin.find:
-        paths: "{{ (weakscan_cve_search_paths + weakscan_cve_extra_paths) | reject('search', 'TODO') | list }}"
+        paths: "{{ (weakscan_cve_component_paths[weakscan_cve_def.component] | default(weakscan_cve_search_paths) + weakscan_cve_extra_paths) | reject('search', 'TODO') | list }}"
         patterns: "{{ weakscan_cve_def.probe.executables | default([]) }}"
         file_type: file
         recurse: true
@@ -26,7 +26,7 @@
 
     - name: 搜尋元件函式庫
       ansible.builtin.find:
-        paths: "{{ (weakscan_cve_search_paths + weakscan_cve_extra_paths) | reject('search', 'TODO') | list }}"
+        paths: "{{ (weakscan_cve_component_paths[weakscan_cve_def.component] | default(weakscan_cve_search_paths) + weakscan_cve_extra_paths) | reject('search', 'TODO') | list }}"
         patterns: "{{ weakscan_cve_def.probe.libraries | default([]) }}"
         file_type: file
         recurse: true
