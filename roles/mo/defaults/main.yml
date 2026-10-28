@@ -16,4 +16,4 @@ mo_key_src: ""   # 私鑰須以 ansible-vault encrypt 加密
 mo_version: ""
 
 # 這個產品內含的元件，CVE 掃描（playbooks/cve_check.yml）只掃有列出的元件
-mo_components: []
+mo_components: [php]

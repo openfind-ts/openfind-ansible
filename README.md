@@ -67,7 +67,7 @@ ansible-playbook -i ../customer-inventories/customer-a playbooks/cve_check.yml -
 - 每台主機列出找到的元件、版本，標成 `affected`、`fixed`、`unknown` 或 `not_applicable`。
 - 報告寫到 control node 的 `~/ansible-reports/`（含客戶主機名稱，不可放進 repo）。
 - 新 CVE：在 `cves/` 新增一個定義檔，見 [`cves/README.md`](cves/README.md)。
-- 產品有哪些元件寫在各產品 role 的 `<產品>_components`；目前只有 M2K、MG 標 `php`。
+- 產品有哪些元件寫在各產品 role 的 `<產品>_components`；目前 M2K、MG、MO 標 `php`。
 
 ## 新增客戶
 
