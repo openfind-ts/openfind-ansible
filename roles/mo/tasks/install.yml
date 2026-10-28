@@ -1,0 +1,5 @@
+---
+# TODO: 依 MailAudit 安裝手冊補上步驟。不可自行猜測安裝參數，不確定就留 TODO 並提出問題。
+- name: 尚未實作 MailAudit 安裝
+  ansible.builtin.fail:
+    msg: "roles/mo/tasks/install.yml 尚未實作，請先補上安裝步驟"

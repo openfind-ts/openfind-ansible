@@ -1,0 +1,12 @@
+---
+- name: 更換 MailGates 憑證
+  ansible.builtin.include_role:
+    name: web_cert
+  vars:
+    web_cert_crt_src: "{{ mg_cert_src }}"
+    web_cert_key_src: "{{ mg_key_src }}"
+    web_cert_conf_dir: "{{ mg_conf_dir }}"
+    web_cert_ssl_conf: "{{ mg_ssl_conf }}"
+    web_cert_include: "{{ mg_ssl_include }}"
+    web_cert_owner: "{{ mg_cert_owner }}"
+    web_cert_restart_cmd: "{{ mg_restart_cmd }}"

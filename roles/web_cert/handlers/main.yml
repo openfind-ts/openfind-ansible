@@ -1,0 +1,5 @@
+---
+- name: Restart web service
+  ansible.builtin.command:
+    cmd: "{{ web_cert_restart_cmd }}"
+  changed_when: true

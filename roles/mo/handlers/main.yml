@@ -1,0 +1,5 @@
+---
+- name: Restart mo web
+  ansible.builtin.command:
+    cmd: "{{ mo_restart_cmd }}"
+  changed_when: true

@@ -1,0 +1,13 @@
+---
+# 健康檢查：只讀不改，任何時候都能安全執行
+- name: 檢查安裝目錄
+  ansible.builtin.stat:
+    path: "{{ ssp_install_dir }}"
+  register: ssp_install_stat
+
+- name: 確認 SecuSharePro 已安裝
+  ansible.builtin.assert:
+    that:
+      - ssp_install_stat.stat.exists
+    fail_msg: "找不到 {{ ssp_install_dir }}"
+    quiet: true

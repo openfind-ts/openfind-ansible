@@ -1,0 +1,5 @@
+---
+# 通用 role：作業系統層弱掃修補。清單依弱掃報告決定，放客戶 inventory；空清單表示不改
+weakscan_sshd_ciphers: []      # 例如 ["aes256-ctr", "aes192-ctr", "aes128-ctr"]
+weakscan_sshd_macs: []         # 例如 ["hmac-sha2-512", "hmac-sha2-256"]
+weakscan_sshd_kexalgorithms: []

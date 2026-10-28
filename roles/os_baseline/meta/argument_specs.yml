@@ -1,0 +1,22 @@
+---
+argument_specs:
+  main:
+    short_description: NTP 與系統更新
+    options:
+      os_baseline_ntp_servers:
+        type: list
+        elements: str
+        default: []
+        description: NTP 伺服器清單，空清單表示不設定
+      os_baseline_update:
+        type: bool
+        default: false
+        description: 是否執行系統更新
+      os_baseline_update_security_only:
+        type: bool
+        default: true
+        description: 只套用安全性更新
+      os_baseline_reboot:
+        type: bool
+        default: false
+        description: 更新後是否重開機

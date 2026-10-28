@@ -1,0 +1,45 @@
+---
+# SSP 換憑證方式不同，尚未定義，所以不在這裡
+- name: 更換憑證 M2K
+  hosts: m2k
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 執行 M2K cert
+      ansible.builtin.include_role:
+        name: m2k
+        tasks_from: cert
+
+- name: 更換憑證 MG
+  hosts: mg
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 執行 MG cert
+      ansible.builtin.include_role:
+        name: mg
+        tasks_from: cert
+
+- name: 更換憑證 MO
+  hosts: mo
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 執行 MO cert
+      ansible.builtin.include_role:
+        name: mo
+        tasks_from: cert
+
+- name: 更換憑證 MB
+  hosts: mb
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 執行 MB cert
+      ansible.builtin.include_role:
+        name: mb
+        tasks_from: cert

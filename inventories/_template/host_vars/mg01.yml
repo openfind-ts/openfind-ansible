@@ -1,0 +1,3 @@
+---
+# 單台主機的例外，例如這台的安裝路徑和標準值不同
+# mg_install_dir: /opt/mailgates

@@ -1,0 +1,5 @@
+---
+# 這個客戶的 M2K 差異設定
+m2k_version: "8.0"
+m2k_cert_src: "{{ inventory_dir }}/files/m2k.crt"
+m2k_key_src: "{{ inventory_dir }}/files/m2k.key"

@@ -1,0 +1,36 @@
+---
+argument_specs:
+  main:
+    short_description: 上傳憑證、修改 Apache SSL 設定、有變動才重啟
+    options:
+      web_cert_crt_src:
+        type: str
+        required: true
+        description: control node 上的憑證檔路徑
+      web_cert_key_src:
+        type: str
+        required: true
+        description: control node 上的私鑰檔路徑
+      web_cert_conf_dir:
+        type: str
+        required: true
+        description: 主機上放憑證的目錄（httpd.conf 所在目錄）
+      web_cert_ssl_conf:
+        type: str
+        required: true
+        description: 含 SSLCertificateFile 的設定檔完整路徑
+      web_cert_include:
+        type: str
+        default: ""
+        description: 需要在 httpd.conf 啟用的 Include，空字串表示不需要
+      web_cert_owner:
+        type: str
+        default: root
+        description: 憑證檔擁有者
+      web_cert_group:
+        type: str
+        description: 憑證檔群組，預設同擁有者
+      web_cert_restart_cmd:
+        type: str
+        required: true
+        description: 重啟 Web 服務的指令

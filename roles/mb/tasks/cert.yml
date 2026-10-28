@@ -1,0 +1,12 @@
+---
+- name: 更換 MailBase 憑證
+  ansible.builtin.include_role:
+    name: web_cert
+  vars:
+    web_cert_crt_src: "{{ mb_cert_src }}"
+    web_cert_key_src: "{{ mb_key_src }}"
+    web_cert_conf_dir: "{{ mb_conf_dir }}"
+    web_cert_ssl_conf: "{{ mb_ssl_conf }}"
+    web_cert_include: "{{ mb_ssl_include }}"
+    web_cert_owner: "{{ mb_cert_owner }}"
+    web_cert_restart_cmd: "{{ mb_restart_cmd }}"

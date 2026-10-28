@@ -1,0 +1,5 @@
+---
+- name: Restart mb web
+  ansible.builtin.command:
+    cmd: "{{ mb_restart_cmd }}"
+  changed_when: true

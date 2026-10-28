@@ -1,0 +1,16 @@
+---
+# Mail2000 產品標準值：所有客戶都一樣的值放這裡，客戶差異放客戶 inventory 的 group_vars/m2k.yml
+m2k_install_dir: /webmail
+m2k_conf_dir: "{{ m2k_install_dir }}/httpd/conf"
+m2k_run_user: webmail
+m2k_restart_cmd: /webmail/tools/m2kctrl httpd restart
+
+# 換憑證（cert.yml → web_cert）
+m2k_ssl_conf: "TODO"  # TODO: 確認 M2K 的 SSL 設定檔路徑
+m2k_ssl_include: "TODO"  # TODO: 確認是否需要在 httpd.conf 啟用 Include；不需要請改成空字串 ""
+m2k_cert_owner: "{{ m2k_run_user }}"  # TODO: 確認憑證檔擁有者
+m2k_cert_src: ""  # 由客戶 group_vars/m2k.yml 指定，例如 "{{ inventory_dir }}/files/m2k.crt"
+m2k_key_src: ""   # 私鑰須以 ansible-vault encrypt 加密
+
+# patch.yml 的目標版本，由客戶 group_vars/m2k.yml 指定
+m2k_version: ""

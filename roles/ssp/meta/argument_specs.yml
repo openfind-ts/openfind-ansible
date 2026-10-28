@@ -1,0 +1,19 @@
+---
+argument_specs:
+  main:
+    short_description: SecuSharePro 安裝（同 install）
+    options: {}
+  install:
+    short_description: 安裝 SecuSharePro
+    options: {}
+  patch:
+    short_description: 更新 SecuSharePro 到指定版本
+    options:
+      ssp_version:
+        type: str
+        required: true
+        description: 目標版本，例如 6.2
+
+  check:
+    short_description: SecuSharePro 健康檢查，只讀不改
+    options: {}

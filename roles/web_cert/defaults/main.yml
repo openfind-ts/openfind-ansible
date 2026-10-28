@@ -1,0 +1,10 @@
+---
+# 通用 role：Apache 換憑證。不寫死任何產品路徑，全部由產品 role 的 cert.yml 帶入。
+web_cert_crt_src: ""        # control node 上的憑證檔
+web_cert_key_src: ""        # control node 上的私鑰檔（ansible-vault 加密，copy 時自動解密）
+web_cert_conf_dir: ""       # 憑證要放到主機上的目錄，同時也是 httpd.conf 所在目錄
+web_cert_ssl_conf: ""       # 含 SSLCertificateFile 的設定檔完整路徑
+web_cert_include: ""        # 需要在 httpd.conf 啟用的 Include（例如 conf/extra/mg_ssl.conf）；空字串表示不需要
+web_cert_owner: root
+web_cert_group: "{{ web_cert_owner }}"
+web_cert_restart_cmd: ""

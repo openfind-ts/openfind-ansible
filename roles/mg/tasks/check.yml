@@ -1,0 +1,27 @@
+---
+# 健康檢查：只讀不改，任何時候都能安全執行
+- name: 檢查安裝目錄
+  ansible.builtin.stat:
+    path: "{{ mg_install_dir }}"
+  register: mg_install_stat
+
+- name: 確認 MailGates 已安裝
+  ansible.builtin.assert:
+    that:
+      - mg_install_stat.stat.exists
+    fail_msg: "找不到 {{ mg_install_dir }}"
+    quiet: true
+
+
+- name: 讀取憑證到期日
+  ansible.builtin.command:
+    cmd: "openssl x509 -enddate -noout -in {{ mg_conf_dir }}/{{ mg_cert_src | basename }}"
+  register: mg_cert_enddate
+  changed_when: false
+  check_mode: false
+  when: mg_cert_src | length > 0
+
+- name: 顯示憑證到期日
+  ansible.builtin.debug:
+    msg: "{{ mg_cert_enddate.stdout }}"
+  when: mg_cert_enddate.stdout is defined

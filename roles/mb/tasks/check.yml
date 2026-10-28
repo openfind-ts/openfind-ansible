@@ -1,0 +1,27 @@
+---
+# 健康檢查：只讀不改，任何時候都能安全執行
+- name: 檢查安裝目錄
+  ansible.builtin.stat:
+    path: "{{ mb_install_dir }}"
+  register: mb_install_stat
+
+- name: 確認 MailBase 已安裝
+  ansible.builtin.assert:
+    that:
+      - mb_install_stat.stat.exists
+    fail_msg: "找不到 {{ mb_install_dir }}"
+    quiet: true
+
+
+- name: 讀取憑證到期日
+  ansible.builtin.command:
+    cmd: "openssl x509 -enddate -noout -in {{ mb_conf_dir }}/{{ mb_cert_src | basename }}"
+  register: mb_cert_enddate
+  changed_when: false
+  check_mode: false
+  when: mb_cert_src | length > 0
+
+- name: 顯示憑證到期日
+  ansible.builtin.debug:
+    msg: "{{ mb_cert_enddate.stdout }}"
+  when: mb_cert_enddate.stdout is defined

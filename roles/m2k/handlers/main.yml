@@ -1,0 +1,5 @@
+---
+- name: Restart m2k web
+  ansible.builtin.command:
+    cmd: "{{ m2k_restart_cmd }}"
+  changed_when: true

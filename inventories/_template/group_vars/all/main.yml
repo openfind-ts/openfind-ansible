@@ -1,0 +1,9 @@
+---
+# 所有主機共用：連線帳號、金鑰、NTP
+ansible_user: ansible
+ansible_become: true
+ansible_ssh_private_key_file: ~/.ssh/customer-a   # 客戶專用金鑰，留在執行者的 ~/.ssh
+
+os_baseline_ntp_servers:
+  - ntp1.example.com
+  - ntp2.example.com

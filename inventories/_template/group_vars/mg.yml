@@ -1,0 +1,5 @@
+---
+# 這個客戶的 MG 差異設定。產品標準值在 roles/mg/defaults/main.yml，不要重複寫在這裡
+mg_version: "6.2"
+mg_cert_src: "{{ inventory_dir }}/files/mg.crt"
+mg_key_src: "{{ inventory_dir }}/files/mg.key"    # 先執行 ansible-vault encrypt files/mg.key

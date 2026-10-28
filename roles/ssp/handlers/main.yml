@@ -1,0 +1,5 @@
+---
+- name: Restart ssp web
+  ansible.builtin.command:
+    cmd: "{{ ssp_restart_cmd }}"
+  changed_when: true

@@ -1,0 +1,31 @@
+---
+argument_specs:
+  main:
+    short_description: MailAudit 安裝（同 install）
+    options: {}
+  install:
+    short_description: 安裝 MailAudit
+    options: {}
+  patch:
+    short_description: 更新 MailAudit 到指定版本
+    options:
+      mo_version:
+        type: str
+        required: true
+        description: 目標版本，例如 6.2
+
+  cert:
+    short_description: 更換 MailAudit 的 Web 憑證（呼叫 web_cert）
+    options:
+      mo_cert_src:
+        type: str
+        required: true
+        description: 憑證檔在 control node 上的路徑
+      mo_key_src:
+        type: str
+        required: true
+        description: 私鑰檔在 control node 上的路徑（須以 ansible-vault 加密）
+
+  check:
+    short_description: MailAudit 健康檢查，只讀不改
+    options: {}

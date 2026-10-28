@@ -1,0 +1,10 @@
+---
+# SecuSharePro 產品標準值。TODO: 以下皆待產品負責人確認後補上，補齊前 role 會停下來報錯
+ssp_install_dir: "TODO"
+ssp_run_user: "TODO"
+ssp_restart_cmd: "TODO"
+
+# 換憑證方式與其他產品不同，尚未定義，因此沒有 cert.yml，也不使用 web_cert
+
+# patch.yml 的目標版本，由客戶 group_vars/ssp.yml 指定
+ssp_version: ""

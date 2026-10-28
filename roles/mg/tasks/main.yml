@@ -1,0 +1,3 @@
+---
+- name: 安裝 MailGates
+  ansible.builtin.include_tasks: install.yml

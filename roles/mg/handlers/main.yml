@@ -1,0 +1,5 @@
+---
+- name: Restart mg web
+  ansible.builtin.command:
+    cmd: "{{ mg_restart_cmd }}"
+  changed_when: true

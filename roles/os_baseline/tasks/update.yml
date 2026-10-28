@@ -1,0 +1,15 @@
+---
+- name: 更新套件
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+    update_only: true   # 只更新已安裝的套件，不新裝
+    security: "{{ os_baseline_update_security_only }}"
+  register: os_baseline_dnf_result
+
+- name: 重開機
+  ansible.builtin.reboot:
+    reboot_timeout: 900
+  when:
+    - os_baseline_reboot | bool
+    - os_baseline_dnf_result is changed

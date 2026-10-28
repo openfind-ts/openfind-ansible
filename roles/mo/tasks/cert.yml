@@ -1,0 +1,12 @@
+---
+- name: 更換 MailAudit 憑證
+  ansible.builtin.include_role:
+    name: web_cert
+  vars:
+    web_cert_crt_src: "{{ mo_cert_src }}"
+    web_cert_key_src: "{{ mo_key_src }}"
+    web_cert_conf_dir: "{{ mo_conf_dir }}"
+    web_cert_ssl_conf: "{{ mo_ssl_conf }}"
+    web_cert_include: "{{ mo_ssl_include }}"
+    web_cert_owner: "{{ mo_cert_owner }}"
+    web_cert_restart_cmd: "{{ mo_restart_cmd }}"

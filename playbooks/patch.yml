@@ -1,0 +1,55 @@
+---
+- name: 更新 M2K
+  hosts: m2k
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 執行 M2K patch
+      ansible.builtin.include_role:
+        name: m2k
+        tasks_from: patch
+
+- name: 更新 MG
+  hosts: mg
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 執行 MG patch
+      ansible.builtin.include_role:
+        name: mg
+        tasks_from: patch
+
+- name: 更新 MO
+  hosts: mo
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 執行 MO patch
+      ansible.builtin.include_role:
+        name: mo
+        tasks_from: patch
+
+- name: 更新 MB
+  hosts: mb
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 執行 MB patch
+      ansible.builtin.include_role:
+        name: mb
+        tasks_from: patch
+
+- name: 更新 SSP
+  hosts: ssp
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 執行 SSP patch
+      ansible.builtin.include_role:
+        name: ssp
+        tasks_from: patch

@@ -1,0 +1,12 @@
+---
+- name: 更換 Mail2000 憑證
+  ansible.builtin.include_role:
+    name: web_cert
+  vars:
+    web_cert_crt_src: "{{ m2k_cert_src }}"
+    web_cert_key_src: "{{ m2k_key_src }}"
+    web_cert_conf_dir: "{{ m2k_conf_dir }}"
+    web_cert_ssl_conf: "{{ m2k_ssl_conf }}"
+    web_cert_include: "{{ m2k_ssl_include }}"
+    web_cert_owner: "{{ m2k_cert_owner }}"
+    web_cert_restart_cmd: "{{ m2k_restart_cmd }}"

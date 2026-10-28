@@ -1,0 +1,55 @@
+---
+- name: 安裝 M2K
+  hosts: m2k
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 執行 M2K install
+      ansible.builtin.include_role:
+        name: m2k
+        tasks_from: install
+
+- name: 安裝 MG
+  hosts: mg
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 執行 MG install
+      ansible.builtin.include_role:
+        name: mg
+        tasks_from: install
+
+- name: 安裝 MO
+  hosts: mo
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 執行 MO install
+      ansible.builtin.include_role:
+        name: mo
+        tasks_from: install
+
+- name: 安裝 MB
+  hosts: mb
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 執行 MB install
+      ansible.builtin.include_role:
+        name: mb
+        tasks_from: install
+
+- name: 安裝 SSP
+  hosts: ssp
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 執行 SSP install
+      ansible.builtin.include_role:
+        name: ssp
+        tasks_from: install

@@ -1,0 +1,10 @@
+---
+- name: 設定 NTP
+  ansible.builtin.include_tasks: ntp.yml
+  when: os_baseline_ntp_servers | length > 0
+
+- name: 系統更新
+  ansible.builtin.include_tasks: update.yml
+  when: os_baseline_update | bool
+
+# TODO: sshd 設定、管理帳號，待定義規則後補上

@@ -1,0 +1,27 @@
+---
+# 健康檢查：只讀不改，任何時候都能安全執行
+- name: 檢查安裝目錄
+  ansible.builtin.stat:
+    path: "{{ m2k_install_dir }}"
+  register: m2k_install_stat
+
+- name: 確認 Mail2000 已安裝
+  ansible.builtin.assert:
+    that:
+      - m2k_install_stat.stat.exists
+    fail_msg: "找不到 {{ m2k_install_dir }}"
+    quiet: true
+
+
+- name: 讀取憑證到期日
+  ansible.builtin.command:
+    cmd: "openssl x509 -enddate -noout -in {{ m2k_conf_dir }}/{{ m2k_cert_src | basename }}"
+  register: m2k_cert_enddate
+  changed_when: false
+  check_mode: false
+  when: m2k_cert_src | length > 0
+
+- name: 顯示憑證到期日
+  ansible.builtin.debug:
+    msg: "{{ m2k_cert_enddate.stdout }}"
+  when: m2k_cert_enddate.stdout is defined

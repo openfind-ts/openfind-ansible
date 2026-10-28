@@ -1,0 +1,3 @@
+---
+- name: 安裝 Mail2000
+  ansible.builtin.include_tasks: install.yml

@@ -1,0 +1,46 @@
+---
+# 只讀不改，任何時候都能安全執行
+- name: 健康檢查 M2K
+  hosts: m2k
+  become: true
+  tasks:
+    - name: 執行 M2K check
+      ansible.builtin.include_role:
+        name: m2k
+        tasks_from: check
+
+- name: 健康檢查 MG
+  hosts: mg
+  become: true
+  tasks:
+    - name: 執行 MG check
+      ansible.builtin.include_role:
+        name: mg
+        tasks_from: check
+
+- name: 健康檢查 MO
+  hosts: mo
+  become: true
+  tasks:
+    - name: 執行 MO check
+      ansible.builtin.include_role:
+        name: mo
+        tasks_from: check
+
+- name: 健康檢查 MB
+  hosts: mb
+  become: true
+  tasks:
+    - name: 執行 MB check
+      ansible.builtin.include_role:
+        name: mb
+        tasks_from: check
+
+- name: 健康檢查 SSP
+  hosts: ssp
+  become: true
+  tasks:
+    - name: 執行 SSP check
+      ansible.builtin.include_role:
+        name: ssp
+        tasks_from: check

@@ -1,0 +1,27 @@
+---
+# 健康檢查：只讀不改，任何時候都能安全執行
+- name: 檢查安裝目錄
+  ansible.builtin.stat:
+    path: "{{ mo_install_dir }}"
+  register: mo_install_stat
+
+- name: 確認 MailAudit 已安裝
+  ansible.builtin.assert:
+    that:
+      - mo_install_stat.stat.exists
+    fail_msg: "找不到 {{ mo_install_dir }}"
+    quiet: true
+
+
+- name: 讀取憑證到期日
+  ansible.builtin.command:
+    cmd: "openssl x509 -enddate -noout -in {{ mo_conf_dir }}/{{ mo_cert_src | basename }}"
+  register: mo_cert_enddate
+  changed_when: false
+  check_mode: false
+  when: mo_cert_src | length > 0
+
+- name: 顯示憑證到期日
+  ansible.builtin.debug:
+    msg: "{{ mo_cert_enddate.stdout }}"
+  when: mo_cert_enddate.stdout is defined

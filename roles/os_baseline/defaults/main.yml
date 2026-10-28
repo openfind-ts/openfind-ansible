@@ -1,0 +1,6 @@
+---
+# 通用 role：作業系統基本設定。客戶的值放客戶 inventory 的 group_vars/all/main.yml
+os_baseline_ntp_servers: []           # 例如 ["ntp1.example.com", "ntp2.example.com"]；空清單表示不管 NTP
+os_baseline_update: false             # true 才會執行系統更新
+os_baseline_update_security_only: true
+os_baseline_reboot: false             # 更新後是否自動重開機（kernel 更新需要）

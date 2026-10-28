@@ -1,0 +1,27 @@
+name: lint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安裝 ansible-core 與 ansible-lint
+        run: pip install ansible-core ansible-lint
+
+      - name: ansible-lint
+        run: ansible-lint
+
+      - name: syntax-check
+        run: |
+          for pb in playbooks/*.yml; do
+            ansible-playbook -i inventories/_template "$pb" --syntax-check
+          done

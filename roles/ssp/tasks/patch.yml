@@ -1,0 +1,12 @@
+---
+- name: 確認已指定目標版本
+  ansible.builtin.assert:
+    that:
+      - ssp_version | length > 0
+    fail_msg: "請在客戶 group_vars/ssp.yml 設定 ssp_version"
+    quiet: true
+
+# TODO: 依 SecuSharePro patch 流程補上步驟；已是目標版本時要跳過，確保可重複執行。
+- name: 尚未實作 SecuSharePro patch
+  ansible.builtin.fail:
+    msg: "roles/ssp/tasks/patch.yml 尚未實作，請先補上 patch 步驟"

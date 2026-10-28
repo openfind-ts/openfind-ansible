@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  author: Openfind 技術服務處
+  description: 通用 role：NTP、系統更新等作業系統基本設定
+  license: Proprietary
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+dependencies: []

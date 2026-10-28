@@ -1,0 +1,8 @@
+---
+- name: 作業系統基本設定
+  hosts: all
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  roles:
+    - role: os_baseline

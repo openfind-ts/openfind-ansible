@@ -1,0 +1,70 @@
+---
+- name: 確認沒有尚未補上的 TODO 值
+  ansible.builtin.assert:
+    that:
+      - item.value | length > 0
+      - item.value is not search('TODO')
+    fail_msg: "{{ item.key }} 尚未設定或仍是 TODO，請先在產品 role 的 defaults 補上"
+    quiet: true
+  loop: "{{ checks | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  vars:
+    checks:
+      web_cert_crt_src: "{{ web_cert_crt_src }}"
+      web_cert_key_src: "{{ web_cert_key_src }}"
+      web_cert_conf_dir: "{{ web_cert_conf_dir }}"
+      web_cert_ssl_conf: "{{ web_cert_ssl_conf }}"
+      web_cert_restart_cmd: "{{ web_cert_restart_cmd }}"
+
+- name: 確認 Include 設定不是 TODO
+  ansible.builtin.assert:
+    that:
+      - web_cert_include is not search('TODO')
+    fail_msg: "web_cert_include 仍是 TODO：需要 Include 就填路徑，不需要就改成空字串"
+    quiet: true
+
+- name: 上傳憑證
+  ansible.builtin.copy:
+    src: "{{ web_cert_crt_src }}"
+    dest: "{{ web_cert_conf_dir }}/{{ web_cert_crt_src | basename }}"
+    owner: "{{ web_cert_owner }}"
+    group: "{{ web_cert_group }}"
+    mode: "0644"
+    backup: true
+  notify: Restart web service
+
+- name: 上傳私鑰
+  ansible.builtin.copy:
+    src: "{{ web_cert_key_src }}"
+    dest: "{{ web_cert_conf_dir }}/{{ web_cert_key_src | basename }}"
+    owner: "{{ web_cert_owner }}"
+    group: "{{ web_cert_group }}"
+    mode: "0600"
+    backup: true
+  diff: false   # 避免 --diff 印出私鑰內容
+  notify: Restart web service
+
+- name: 啟用 SSL 設定的 Include
+  ansible.builtin.lineinfile:
+    path: "{{ web_cert_conf_dir }}/httpd.conf"
+    regexp: '^#?\s*Include\s+{{ web_cert_include | regex_escape }}\s*$'
+    line: "Include {{ web_cert_include }}"
+    backup: true
+  when: web_cert_include | length > 0
+  notify: Restart web service
+
+- name: SSL 設定指向新憑證
+  ansible.builtin.lineinfile:
+    path: "{{ web_cert_ssl_conf }}"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    backup: true
+  loop:
+    - regexp: '^\s*SSLCertificateFile\s'
+      line: 'SSLCertificateFile "{{ web_cert_conf_dir }}/{{ web_cert_crt_src | basename }}"'
+    - regexp: '^\s*SSLCertificateKeyFile\s'
+      line: 'SSLCertificateKeyFile "{{ web_cert_conf_dir }}/{{ web_cert_key_src | basename }}"'
+  loop_control:
+    label: "{{ item.line }}"
+  notify: Restart web service

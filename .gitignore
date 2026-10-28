@@ -1,0 +1,8 @@
+# 機密與暫存檔不進 repo
+*.retry
+.vault_pass*
+*.vault-pass
+*.key
+*.pem
+inventories/_template/group_vars/all/vault.yml
+.venv/
