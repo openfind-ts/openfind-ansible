@@ -364,7 +364,7 @@ argument_specs:
 | --- | --- | --- | --- | --- | --- |
 | M2K | `/webmail` | webmail | `/webmail/tools/m2kctrl httpd restart` | 是 | TODO |
 | MG | `/mailgates` | root | `/mailgates/httpd/bin/apachectl restart` | 是 | `conf/extra/mg_ssl.conf` |
-| MO | `/mailgates` | root | `/mailgates/httpd/bin/apachectl restart` | 是 | TODO |
+| MO | `/mailgates` | root | `/mailgates/httpd/bin/apachectl restart` | 是 | `conf/extra/mg_ssl.conf` |
 | MB | `/webmail` | root | `/webmail/httpd/bin/apachectl restart` | 是 | TODO |
 | SSP | TODO | TODO | TODO | 否，換憑證方式不同 | — |
 

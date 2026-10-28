@@ -6,8 +6,8 @@ mo_run_user: root
 mo_restart_cmd: /mailgates/httpd/bin/apachectl restart
 
 # 換憑證（cert.yml → web_cert）
-mo_ssl_conf: "TODO"  # TODO: 確認 MO 的 SSL 設定檔路徑
-mo_ssl_include: "TODO"  # TODO: 確認是否需要在 httpd.conf 啟用 Include；不需要請改成空字串 ""
+mo_ssl_conf: "{{ mo_conf_dir }}/extra/mg_ssl.conf"
+mo_ssl_include: conf/extra/mg_ssl.conf  # httpd.conf 需要啟用的 Include
 mo_cert_owner: "{{ mo_run_user }}"  # TODO: 確認憑證檔擁有者
 mo_cert_src: ""  # 由客戶 group_vars/mo.yml 指定，例如 "{{ inventory_dir }}/files/mo.crt"
 mo_key_src: ""   # 私鑰須以 ansible-vault encrypt 加密

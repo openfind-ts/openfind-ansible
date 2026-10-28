@@ -68,7 +68,7 @@ ansible-playbook -i ../customer-inventories/customer-a playbooks/renew_cert.yml 
 | --- | --- | --- | --- |
 | M2K | TODO | 待補 SSL 設定檔路徑 | 可用 |
 | MG | TODO | 可用 | 可用 |
-| MO | TODO | 待補 SSL 設定檔路徑 | 可用 |
+| MO | TODO | 可用 | 可用 |
 | MB | TODO | 待補 SSL 設定檔路徑 | 可用 |
 | SSP | TODO | 換憑證方式不同，尚未定義 | 待補安裝路徑 |
 
