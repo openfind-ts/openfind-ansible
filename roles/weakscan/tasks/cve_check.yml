@@ -12,12 +12,18 @@
     - weakscan_cve_def.component not in weakscan_cve_components
     - weakscan_cve_findings is not defined
 
+- name: 決定搜尋目錄（有寫元件位置就只搜那裡）
+  ansible.builtin.set_fact:
+    weakscan_cve_paths: >-
+      {{ (weakscan_cve_component_paths[weakscan_cve_def.component] | default(weakscan_cve_search_paths)
+          + weakscan_cve_extra_paths) | reject('search', 'TODO') | list }}
+
 - name: 產品內含這個元件才掃描
   when: weakscan_cve_def.component in weakscan_cve_components
   block:
     - name: 搜尋元件執行檔
       ansible.builtin.find:
-        paths: "{{ (weakscan_cve_component_paths[weakscan_cve_def.component] | default(weakscan_cve_search_paths) + weakscan_cve_extra_paths) | reject('search', 'TODO') | list }}"
+        paths: "{{ weakscan_cve_paths }}"
         patterns: "{{ weakscan_cve_def.probe.executables | default([]) }}"
         file_type: file
         recurse: true
@@ -26,7 +32,7 @@
 
     - name: 搜尋元件函式庫
       ansible.builtin.find:
-        paths: "{{ (weakscan_cve_component_paths[weakscan_cve_def.component] | default(weakscan_cve_search_paths) + weakscan_cve_extra_paths) | reject('search', 'TODO') | list }}"
+        paths: "{{ weakscan_cve_paths }}"
         patterns: "{{ weakscan_cve_def.probe.libraries | default([]) }}"
         file_type: file
         recurse: true
