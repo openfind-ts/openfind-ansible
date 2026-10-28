@@ -1,0 +1,107 @@
+---
+# 依 CVE 定義檔找出元件、讀版本、判斷是否受影響。只讀不改，--check 也會實際讀版本。
+- name: 讀取 CVE 定義檔
+  ansible.builtin.include_vars:
+    file: "{{ weakscan_cve_file }}"
+    name: weakscan_cve_def
+
+- name: 標記為不適用（這個產品沒有這個元件）
+  ansible.builtin.set_fact:
+    weakscan_cve_not_applicable: true
+  when:
+    - weakscan_cve_def.component not in weakscan_cve_components
+    - weakscan_cve_findings is not defined
+
+- name: 產品內含這個元件才掃描
+  when: weakscan_cve_def.component in weakscan_cve_components
+  block:
+    - name: 搜尋元件執行檔
+      ansible.builtin.find:
+        paths: "{{ (weakscan_cve_search_paths + weakscan_cve_extra_paths) | reject('search', 'TODO') | list }}"
+        patterns: "{{ weakscan_cve_def.probe.executables | default([]) }}"
+        file_type: file
+        recurse: true
+        depth: "{{ weakscan_cve_depth }}"
+      register: weakscan_cve_bins
+
+    - name: 搜尋元件函式庫
+      ansible.builtin.find:
+        paths: "{{ (weakscan_cve_search_paths + weakscan_cve_extra_paths) | reject('search', 'TODO') | list }}"
+        patterns: "{{ weakscan_cve_def.probe.libraries | default([]) }}"
+        file_type: file
+        recurse: true
+        depth: "{{ weakscan_cve_depth + 1 }}"
+      register: weakscan_cve_libs
+      when: weakscan_cve_def.probe.libraries | default([]) | length > 0
+
+    - name: 讀取執行檔版本
+      ansible.builtin.command:
+        argv:
+          - "{{ item.path }}"
+          - "-v"
+      loop: "{{ weakscan_cve_bins.files | selectattr('mode', 'search', '[1357]') | list }}"
+      loop_control:
+        label: "{{ item.path }}"
+      register: weakscan_cve_bin_ver
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: 讀取函式庫版本
+      ansible.builtin.command:
+        argv:
+          - grep
+          - -aoE
+          - -m1
+          - "{{ weakscan_cve_def.probe.library_version_pattern }}"
+          - "{{ item.path }}"
+      loop: "{{ weakscan_cve_libs.files | default([]) }}"
+      loop_control:
+        label: "{{ item.path }}"
+      register: weakscan_cve_lib_ver
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: 判斷是否受影響
+      ansible.builtin.set_fact:
+        weakscan_cve_findings: "{{ (weakscan_cve_findings | default([]) + findings) | unique }}"
+        weakscan_cve_not_applicable: false
+      vars:
+        raw: >-
+          {%- set out = [] -%}
+          {%- for r in (weakscan_cve_bin_ver.results | default([])) + (weakscan_cve_lib_ver.results | default([])) -%}
+            {%- set v = (r.stdout | default('')) | regex_search('[0-9]+\.[0-9]+\.[0-9]+') -%}
+            {%- set _ = out.append({'path': r.item.path, 'version': v | default('', true)}) -%}
+          {%- endfor -%}
+          {{ out }}
+        findings: >-
+          {%- set out = [] -%}
+          {%- for f in raw -%}
+            {%- if not f.version -%}
+              {%- set status = 'unknown' -%}
+            {%- else -%}
+              {%- set br = (f.version.split('.')[0:2]) | join('.') -%}
+              {%- if br not in weakscan_cve_def.branches -%}
+                {%- set status = 'unknown' -%}
+              {%- elif weakscan_cve_def.branches[br] is none -%}
+                {%- set status = 'affected' -%}
+              {%- elif f.version is version(weakscan_cve_def.branches[br], '<') -%}
+                {%- set status = 'affected' -%}
+              {%- else -%}
+                {%- set status = 'fixed' -%}
+              {%- endif -%}
+            {%- endif -%}
+            {%- set _ = out.append(f | combine({'status': status})) -%}
+          {%- endfor -%}
+          {{ out }}
+
+    - name: 顯示掃描結果
+      ansible.builtin.debug:
+        msg: >-
+          {{ weakscan_cve_def.id }}
+          {{ weakscan_cve_def.component }}：
+          {% if weakscan_cve_findings | length == 0 %}沒有找到
+          {%- else %}{% for f in weakscan_cve_findings %}
+          {{ f.status }} {{ f.version | default('?', true) }} {{ f.path }}{{ '；' if not loop.last }}
+          {%- endfor %}{% endif %}

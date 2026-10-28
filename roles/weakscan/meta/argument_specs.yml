@@ -18,3 +18,35 @@ argument_specs:
         elements: str
         default: []
         description: sshd KexAlgorithms，空清單表示不改
+
+  cve_check:
+    short_description: 依 CVE 定義檔掃描元件版本，只讀不改
+    options:
+      weakscan_cve_file:
+        type: str
+        required: true
+        description: CVE 定義檔完整路徑
+      weakscan_cve_search_paths:
+        type: list
+        elements: str
+        required: true
+        description: 要搜尋的產品目錄
+      weakscan_cve_extra_paths:
+        type: list
+        elements: str
+        description: 額外搜尋的系統路徑
+      weakscan_cve_depth:
+        type: int
+        default: 3
+        description: 搜尋深度
+  cve_report:
+    short_description: 把所有主機的掃描結果寫成 CSV（在 control node 執行）
+    options:
+      weakscan_cve:
+        type: str
+        required: true
+        description: CVE 編號
+      weakscan_cve_report_dir:
+        type: str
+        default: "~/ansible-reports"
+        description: 報告存放目錄（不可放在 repo 裡）

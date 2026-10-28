@@ -14,3 +14,6 @@ m2k_key_src: ""   # 私鑰須以 ansible-vault encrypt 加密
 
 # patch.yml 的目標版本，由客戶 group_vars/m2k.yml 指定
 m2k_version: ""
+
+# 這個產品內含的元件，CVE 掃描（playbooks/cve_check.yml）只掃有列出的元件
+m2k_components: [php]

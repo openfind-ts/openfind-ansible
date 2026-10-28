@@ -1,0 +1,30 @@
+---
+# 在 control node 把所有主機的結果寫成 CSV。報告含客戶主機名稱，不可放進任何 repo
+- name: 建立報告目錄
+  ansible.builtin.file:
+    path: "{{ weakscan_cve_report_dir }}"
+    state: directory
+    mode: "0700"
+
+- name: 寫入 CSV 報告
+  ansible.builtin.template:
+    src: cve_report.csv.j2
+    dest: "{{ weakscan_cve_report_dir }}/{{ weakscan_cve }}-{{ hostvars[groups['all'] | first].inventory_dir | basename }}-{{ now(fmt='%Y%m%d-%H%M') }}.csv"
+    mode: "0600"
+  check_mode: false
+  register: weakscan_cve_report
+
+- name: 顯示報告位置與統計
+  ansible.builtin.debug:
+    msg: >-
+      報告：{{ weakscan_cve_report.dest }}
+      ／受影響主機：{{ affected_hosts | length }} 台 {{ affected_hosts | join(', ') }}
+  vars:
+    affected_hosts: >-
+      {%- set out = [] -%}
+      {%- for h in groups['all'] -%}
+        {%- if hostvars[h].weakscan_cve_findings | default([]) | selectattr('status', 'eq', 'affected') | list | length > 0 -%}
+          {%- set _ = out.append(h) -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ out }}

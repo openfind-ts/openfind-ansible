@@ -3,3 +3,15 @@
 weakscan_sshd_ciphers: []      # 例如 ["aes256-ctr", "aes192-ctr", "aes128-ctr"]
 weakscan_sshd_macs: []         # 例如 ["hmac-sha2-512", "hmac-sha2-256"]
 weakscan_sshd_kexalgorithms: []
+
+# CVE 掃描（tasks_from: cve_check），只讀不改
+weakscan_cve: ""                         # CVE 編號，對應 cves/<編號>.yml，執行時用 -e cve=... 帶入
+weakscan_cve_file: ""                    # CVE 定義檔完整路徑，由 playbook 帶入
+weakscan_cve_search_paths: []            # 要搜尋的目錄，由 playbook 依產品帶入
+weakscan_cve_components: []              # 產品內含的元件，由 playbook 帶入 <產品>_components
+weakscan_cve_extra_paths:                # 額外一定會搜的系統路徑
+  - /usr/bin
+  - /usr/sbin
+  - /usr/local/bin
+weakscan_cve_depth: 3                    # 搜尋深度；產品目錄可能很大（郵件資料），不要開太深
+weakscan_cve_report_dir: "~/ansible-reports"

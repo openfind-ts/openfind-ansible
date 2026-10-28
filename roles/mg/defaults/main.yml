@@ -14,3 +14,6 @@ mg_key_src: ""   # 私鑰須以 ansible-vault encrypt 加密
 
 # patch.yml 的目標版本，由客戶 group_vars/mg.yml 指定
 mg_version: ""
+
+# 這個產品內含的元件，CVE 掃描（playbooks/cve_check.yml）只掃有列出的元件
+mg_components: [php]

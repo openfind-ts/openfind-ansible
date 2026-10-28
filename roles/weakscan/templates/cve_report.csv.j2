@@ -1,0 +1,16 @@
+host,ansible_host,groups,status,version,path
+{% for h in groups['all'] | sort %}
+{%   set hv = hostvars[h] %}
+{%   set grp = hv.group_names | join(' ') %}
+{%   if hv.weakscan_cve_findings is not defined and hv.weakscan_cve_not_applicable | default(false) %}
+{{ h }},{{ hv.ansible_host | default(h) }},{{ grp }},not_applicable,,
+{%   elif hv.weakscan_cve_findings is not defined %}
+{{ h }},{{ hv.ansible_host | default(h) }},{{ grp }},not_scanned,,
+{%   elif hv.weakscan_cve_findings | length == 0 %}
+{{ h }},{{ hv.ansible_host | default(h) }},{{ grp }},not_found,,
+{%   else %}
+{%     for f in hv.weakscan_cve_findings %}
+{{ h }},{{ hv.ansible_host | default(h) }},{{ grp }},{{ f.status }},{{ f.version }},{{ f.path }}
+{%     endfor %}
+{%   endif %}
+{% endfor %}

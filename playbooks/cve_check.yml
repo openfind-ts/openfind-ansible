@@ -1,0 +1,120 @@
+---
+# 依 CVE 定義檔掃描所有產品主機，只讀不改
+# 用法：ansible-playbook -i ../customer-inventories/<客戶> playbooks/cve_check.yml -e cve=CVE-2026-109618
+# 各產品內含哪些元件，寫在 roles/<產品>/defaults/main.yml 的 <產品>_components；沒有該元件的產品標成 not_applicable
+- name: 掃描 M2K
+  hosts: m2k
+  become: true
+  gather_facts: false
+  tasks:
+    # 只為了載入 m2k role 的標準值（m2k_install_dir、m2k_components），不執行任何 task
+    - name: 載入 M2K 標準值
+      ansible.builtin.import_role:
+        name: m2k
+        tasks_from: check
+      when: false
+
+    - name: 掃描 M2K 的 CVE
+      ansible.builtin.include_role:
+        name: weakscan
+        tasks_from: cve_check
+      vars:
+        weakscan_cve_file: "{{ playbook_dir }}/../cves/{{ cve }}.yml"
+        weakscan_cve_components: "{{ m2k_components }}"
+        weakscan_cve_search_paths: ["{{ m2k_install_dir }}"]
+
+- name: 掃描 MG
+  hosts: mg
+  become: true
+  gather_facts: false
+  tasks:
+    # 只為了載入 mg role 的標準值（mg_install_dir、mg_components），不執行任何 task
+    - name: 載入 MG 標準值
+      ansible.builtin.import_role:
+        name: mg
+        tasks_from: check
+      when: false
+
+    - name: 掃描 MG 的 CVE
+      ansible.builtin.include_role:
+        name: weakscan
+        tasks_from: cve_check
+      vars:
+        weakscan_cve_file: "{{ playbook_dir }}/../cves/{{ cve }}.yml"
+        weakscan_cve_components: "{{ mg_components }}"
+        weakscan_cve_search_paths: ["{{ mg_install_dir }}"]
+
+- name: 掃描 MO
+  hosts: mo
+  become: true
+  gather_facts: false
+  tasks:
+    # 只為了載入 mo role 的標準值（mo_install_dir、mo_components），不執行任何 task
+    - name: 載入 MO 標準值
+      ansible.builtin.import_role:
+        name: mo
+        tasks_from: check
+      when: false
+
+    - name: 掃描 MO 的 CVE
+      ansible.builtin.include_role:
+        name: weakscan
+        tasks_from: cve_check
+      vars:
+        weakscan_cve_file: "{{ playbook_dir }}/../cves/{{ cve }}.yml"
+        weakscan_cve_components: "{{ mo_components }}"
+        weakscan_cve_search_paths: ["{{ mo_install_dir }}"]
+
+- name: 掃描 MB
+  hosts: mb
+  become: true
+  gather_facts: false
+  tasks:
+    # 只為了載入 mb role 的標準值（mb_install_dir、mb_components），不執行任何 task
+    - name: 載入 MB 標準值
+      ansible.builtin.import_role:
+        name: mb
+        tasks_from: check
+      when: false
+
+    - name: 掃描 MB 的 CVE
+      ansible.builtin.include_role:
+        name: weakscan
+        tasks_from: cve_check
+      vars:
+        weakscan_cve_file: "{{ playbook_dir }}/../cves/{{ cve }}.yml"
+        weakscan_cve_components: "{{ mb_components }}"
+        weakscan_cve_search_paths: ["{{ mb_install_dir }}"]
+
+- name: 掃描 SSP
+  hosts: ssp
+  become: true
+  gather_facts: false
+  tasks:
+    # 只為了載入 ssp role 的標準值（ssp_install_dir、ssp_components），不執行任何 task
+    - name: 載入 SSP 標準值
+      ansible.builtin.import_role:
+        name: ssp
+        tasks_from: check
+      when: false
+
+    - name: 掃描 SSP 的 CVE
+      ansible.builtin.include_role:
+        name: weakscan
+        tasks_from: cve_check
+      vars:
+        weakscan_cve_file: "{{ playbook_dir }}/../cves/{{ cve }}.yml"
+        weakscan_cve_components: "{{ ssp_components }}"
+        weakscan_cve_search_paths: ["{{ ssp_install_dir }}"]
+
+- name: 產生報告
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: 寫入 CSV
+      ansible.builtin.include_role:
+        name: weakscan
+        tasks_from: cve_report
+      vars:
+        weakscan_cve: "{{ cve }}"
