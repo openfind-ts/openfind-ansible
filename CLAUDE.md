@@ -23,6 +23,11 @@
 - 不可自行猜測產品的安裝參數、路徑、服務指令；不確定就寫 TODO 註解並提出問題。
 - 不可用獨立 task 每次都重啟服務，重啟一律用 handler。
 
+## CVE 掃描
+- 新的 CVE 一律在 cves/ 新增定義檔，用 playbooks/cve_check.yml 掃描，不另寫 playbook。
+- 產品內含哪些元件寫在 roles/<產品>/defaults/main.yml 的 <產品>_components；不確定的產品不可自行加上元件，要先問人。
+- CVE 掃描只讀不改；修補另外寫，並照一般流程驗證。
+
 ## 完成前
 - 模組一律用 FQCN（例如 ansible.builtin.lineinfile）。
 - 執行下列檢查，有錯修到通過：

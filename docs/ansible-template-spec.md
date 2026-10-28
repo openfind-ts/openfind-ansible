@@ -128,7 +128,7 @@ SSP 的換憑證方式與其他產品不同，尚未定義，所以 SSP 沒有 `
 | --- | --- | --- |
 | `os_baseline` | NTP、sshd 設定、管理帳號、作業系統更新 | 全部主機 |
 | `web_cert` | 上傳憑證、修改 Apache SSL 設定、觸發重啟 | M2K、MG、MO、MB |
-| `weakscan` | 作業系統層弱掃項目（SSH 演算法、OpenSSL 等） | 全部主機 |
+| `weakscan` | 作業系統層弱掃項目（SSH 演算法、OpenSSL 等）；依 `cves/` 定義檔掃描 CVE（只讀） | 全部主機 |
 
 通用 role 不可寫死任何產品的路徑或指令，全部由產品 role 帶入。例如 MG 的 `tasks/cert.yml`：
 
@@ -355,6 +355,14 @@ argument_specs:
 - [ ] CI 的 ansible-lint 與 syntax-check 通過
 - [ ] 在 lab 環境跑過，第二次執行 `changed=0`
 - [ ] AI 留下的 TODO 都已由人確認或處理
+
+### 4.4 CVE 掃描
+
+收到 CVE 通報時，在 `cves/` 新增一個定義檔（元件、找檔案的方式、各版本分支的修補版本），用 `playbooks/cve_check.yml -e cve=<編號>` 掃描所有產品主機。
+
+- 各產品內含哪些元件，寫在產品 role 的 `<產品>_components`，例如 `m2k_components: [php]`；沒有該元件的產品標成 `not_applicable`，不會掃描。
+- 掃描只讀不改，結果寫到 control node 的 `~/ansible-reports/`，報告含客戶主機名稱，不可放進任何 repo。
+- 修補不在掃描裡做，另外寫成 playbook 並照第 9 章驗證。
 
 ## 12. 產品標準值
 

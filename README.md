@@ -17,8 +17,9 @@ openfind-ansible/
 │   ├── m2k/ mg/ mo/ mb/ ssp/ # 產品 role：install、patch、cert、check
 │   ├── web_cert/             # 通用：Apache 換憑證
 │   ├── os_baseline/          # 通用：NTP、系統更新
-│   └── weakscan/             # 通用：作業系統層弱掃（sshd 演算法）
-├── playbooks/                # 依工作分：install、patch、renew_cert、healthcheck、weakscan_fix、os_baseline
+│   └── weakscan/             # 通用：作業系統層弱掃（sshd 演算法）、CVE 掃描
+├── playbooks/                # 依工作分：install、patch、renew_cert、healthcheck、weakscan_fix、os_baseline、cve_check
+├── cves/                     # CVE 定義檔，一個 CVE 一個檔
 ├── inventories/_template/    # 客戶 inventory 範本，只有假資料
 └── .github/workflows/        # CI：ansible-lint 與 syntax-check
 ```
@@ -54,6 +55,19 @@ ansible-playbook -i ../customer-inventories/customer-a playbooks/renew_cert.yml 
 # 只挑 staging 環境的 MG
 --limit 'mg:&staging'
 ```
+
+## CVE 掃描
+
+收到 CVE 通報時，用 `cves/` 裡的定義檔掃描所有產品主機，只讀不改：
+
+```bash
+ansible-playbook -i ../customer-inventories/customer-a playbooks/cve_check.yml -e cve=CVE-2026-109618
+```
+
+- 每台主機列出找到的元件、版本，標成 `affected`、`fixed`、`unknown` 或 `not_applicable`。
+- 報告寫到 control node 的 `~/ansible-reports/`（含客戶主機名稱，不可放進 repo）。
+- 新 CVE：在 `cves/` 新增一個定義檔，見 [`cves/README.md`](cves/README.md)。
+- 產品有哪些元件寫在各產品 role 的 `<產品>_components`；目前只有 M2K、MG 標 `php`。
 
 ## 新增客戶
 
