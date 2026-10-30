@@ -144,6 +144,7 @@
       poll: 15
       changed_when: true
       register: m2k_patch_install
+      when: not ansible_check_mode    # async 不能在 --check 執行；預演只顯示安裝計畫
 
 # 安裝成功才會執行；任一個 patch 失敗時服務維持停止，由人確認後再處理
 - name: 立即啟動服務

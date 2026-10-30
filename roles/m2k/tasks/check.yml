@@ -44,6 +44,32 @@
     msg: "找不到 {{ m2k_version_file }}，無法判斷版本（非客製化客戶的版本查法尚未定義）"
   when: not m2k_version_file_stat.stat.exists
 
+# 這台的 patch 安裝紀錄（m2kpatch.info）。多主機共用 /webmail/etc 時 system_version.info 是共用的，要看這個才知道各台裝到哪裡。
+# 各客製化客戶的紀錄方式不同，預設關閉，由客戶 group_vars/m2k.yml 設定 m2k_check_patch_record: true 開啟
+- name: 顯示這台的 patch 安裝紀錄
+  when: m2k_check_patch_record | bool
+  block:
+    - name: 讀取 patch 安裝紀錄
+      ansible.builtin.slurp:
+        src: "{{ m2k_patch_record_file }}"
+      register: m2k_check_record
+
+    - name: 顯示 patch 安裝紀錄的最新一筆
+      ansible.builtin.debug:
+        msg: >-
+          {{ '這台安裝紀錄最新：' ~ m2k_check_record_latest
+             ~ '，建置時間 ' ~ (m2k_check_record_latest[4:] | regex_replace('^(..)(..)(..)(..)(..)$', '20\1-\2-\3 \4:\5'))
+             ~ ('' if m2k_check_record_latest == m2k_check_shared else '；與 ' ~ m2k_version_file ~ '（' ~ m2k_check_shared ~ '）不同')
+             if m2k_check_record_latest | length > 0 else m2k_patch_record_file ~ ' 沒有 mp' ~ m2k_check_major ~ ' 的紀錄' }}
+      vars:
+        m2k_check_major: "{{ m2k_version | replace('.', '') if m2k_version | length > 0 else '\\d\\d' }}"
+        m2k_check_recorded: >-
+          {{ (m2k_check_record.content | b64decode).splitlines()
+             | map('regex_replace', '^\s*(\S*).*$', '\1')
+             | select('match', '^mp' ~ m2k_check_major ~ '\d{10}$') | list }}
+        m2k_check_record_latest: "{{ m2k_check_recorded | max if m2k_check_recorded | length > 0 else '' }}"
+        m2k_check_shared: "{{ (m2k_version_file_content.content | default('') | b64decode).split() | first | default('') }}"
+
 
 - name: 讀取憑證到期日
   ansible.builtin.command:
