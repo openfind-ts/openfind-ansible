@@ -37,7 +37,8 @@ Openfind 技術服務處 · 2026-10-28
 | Repo | 權限 | 放什麼 |
 | --- | --- | --- |
 | `openfind-ts/openfind-ansible` | 公開（public） | roles、playbooks、inventory 範本，只有假資料 |
-| `openfind-ts/customer-inventories` | 私有（private），只開給負責的同仁 | 每個客戶一個資料夾：主機、差異設定、加密過的密碼與憑證 |
+| `openfind-ts/customer-inventories` | 公開（public），只放範例 | 客戶資料夾的範例：`lab/`、`customer-a/`，全是假資料 |
+| 真實客戶的 repo（另建） | 私有（private），只開給負責的同仁 | 每個客戶一個資料夾：主機、差異設定、加密過的密碼與憑證 |
 
 **程式 repo：`openfind-ansible`**
 
