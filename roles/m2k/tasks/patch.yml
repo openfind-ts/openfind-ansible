@@ -1,12 +1,160 @@
 ---
-- name: 確認已指定目標版本
+# 依序安裝 m2k_patch_dir 底下比主機目前版本新的 patch，裝到最新為止；已是最新就跳過。
+# 目前只適用客製化客戶：版本看 system_version.info 第一欄，patch 名稱看 patch.info 的 Name，格式都是 mp + 主次版本 + 建置時間。
+- name: 確認已指定目標版本與 patch 目錄
   ansible.builtin.assert:
     that:
       - m2k_version | length > 0
-    fail_msg: "請在客戶 group_vars/m2k.yml 設定 m2k_version"
+      - m2k_patch_dir | length > 0
+    fail_msg: "請在客戶 group_vars/m2k.yml 設定 m2k_version 與 m2k_patch_dir"
     quiet: true
 
-# TODO: 依 Mail2000 patch 流程補上步驟；已是目標版本時要跳過，確保可重複執行。
-- name: 尚未實作 Mail2000 patch
-  ansible.builtin.fail:
-    msg: "roles/m2k/tasks/patch.yml 尚未實作，請先補上 patch 步驟"
+# --- control node：找出所有 patch 並讀出名稱 ---
+- name: 找出 patch 檔
+  ansible.builtin.find:
+    paths: "{{ m2k_patch_dir }}"
+    patterns: "{{ m2k_patch_file_pattern }}"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  register: m2k_patch_files
+
+- name: 讀取各 patch 的 patch.info
+  ansible.builtin.command:
+    argv:
+      - tar
+      - -xzvOf
+      - "{{ item.path }}"
+      - --wildcards
+      - --no-wildcards-match-slash
+      - "*/patch.info"
+  loop: "{{ m2k_patch_files.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  changed_when: false
+  check_mode: false
+  register: m2k_patch_info
+
+# tar -v 把成員路徑寫到 stderr，-O 把 patch.info 內容寫到 stdout
+# 先清空，serial 分批重跑時才不會重複累加
+- name: 清空 patch 清單
+  ansible.builtin.set_fact:
+    m2k_patch_available: []
+
+- name: 整理 patch 清單
+  ansible.builtin.set_fact:
+    m2k_patch_available: "{{ m2k_patch_available + [m2k_patch_item] }}"
+  vars:
+    m2k_patch_name: "{{ item.stdout | regex_search('^Name\\s*=\\s*(mp\\d{12})\\s*$', '\\1', multiline=True) | default([''], true) | first }}"
+    m2k_patch_item:
+      file: "{{ item.item.path }}"
+      dir: "{{ item.stderr_lines | first | dirname }}"
+      name: "{{ m2k_patch_name }}"
+      major: "{{ m2k_patch_name[2:4] }}"
+      stamp: "{{ m2k_patch_name[4:] }}"
+  loop: "{{ m2k_patch_info.results }}"
+  loop_control:
+    label: "{{ item.item.path | basename }}"
+
+- name: 確認每個 patch 都讀得到名稱
+  ansible.builtin.assert:
+    that:
+      - m2k_patch_available | length > 0
+      - m2k_patch_available | selectattr('name', 'equalto', '') | list | length == 0
+    fail_msg: "{{ m2k_patch_dir }} 沒有 patch，或有 patch 的 patch.info 讀不到 Name"
+    quiet: true
+
+# --- 主機：判斷目前版本與要裝的 patch ---
+- name: 讀取目前版本
+  ansible.builtin.slurp:
+    src: "{{ m2k_version_file }}"
+  register: m2k_patch_version_file
+
+- name: 計算要安裝的 patch
+  ansible.builtin.set_fact:
+    m2k_patch_current: "{{ m2k_patch_current_name }}"
+    m2k_patch_pending: >-
+      {{ m2k_patch_available
+         | selectattr('major', 'equalto', m2k_patch_current_name[2:4])
+         | selectattr('stamp', 'gt', m2k_patch_current_name[4:])
+         | sort(attribute='stamp') }}
+  vars:
+    m2k_patch_current_name: "{{ (m2k_patch_version_file.content | b64decode).split() | first | default('') }}"
+
+- name: 確認目前版本格式與 m2k_version 相符
+  ansible.builtin.assert:
+    that:
+      - m2k_patch_current is match('^mp\d{12}$')
+      - m2k_patch_current[2:4] == m2k_version | replace('.', '')
+    fail_msg: >-
+      {{ m2k_version_file }} 第一欄是 {{ m2k_patch_current }}，
+      不是 mp + 主次版本 + 建置時間的格式，或與 m2k_version={{ m2k_version }} 不符
+    quiet: true
+
+- name: 顯示安裝計畫
+  ansible.builtin.debug:
+    msg: >-
+      目前 {{ m2k_patch_current }}；
+      {% if m2k_patch_pending | length > 0 %}將依序安裝 {{ m2k_patch_pending | map(attribute='dir') | join(' → ') }}
+      {%- else %}已是最新，不需安裝{% endif %}
+
+# --- 安裝：傳檔、停服務、依序執行 installer、啟動服務 ---
+- name: 安裝 patch
+  when: m2k_patch_pending | length > 0
+  block:
+    # 解開後留在暫存目錄，交給系統的 tmp 清理機制
+    - name: 傳送並解開 patch
+      ansible.builtin.unarchive:
+        src: "{{ item.file }}"
+        dest: "{{ m2k_patch_tmp_dir }}"
+        creates: "{{ m2k_patch_tmp_dir }}/{{ item.dir }}/patch_installer.pl"
+      loop: "{{ m2k_patch_pending }}"
+      loop_control:
+        label: "{{ item.dir }}"
+
+    # installer 會檢查相關服務已停止，不會自己停
+    - name: 停止 Mail2000 服務
+      ansible.builtin.command:
+        argv: [su, "{{ m2k_run_user }}", -c, "{{ m2k_ctrl_cmd }} -s all -c stop"]
+      changed_when: true
+      notify: Start m2k services
+
+    # 用一個 shell 依序執行，任一個失敗就停，不會接著裝後面的 patch；每裝完一個確認版本已更新
+    # 非同步執行：SSH 斷線或控制機中斷時 installer 仍會在主機上裝完，不會裝到一半；超過 m2k_patch_timeout 會被終止，要設寬一點
+    - name: 依序執行 patch_installer.pl
+      ansible.builtin.shell:
+        cmd: |
+          set -e
+          {% for p in m2k_patch_pending %}
+          echo "===== {{ p.dir }}（{{ p.name }}）"
+          cd {{ (m2k_patch_tmp_dir ~ '/' ~ p.dir) | quote }}
+          perl patch_installer.pl
+          test "$(cut -f1 {{ m2k_version_file | quote }})" = "{{ p.name }}"
+          {% endfor %}
+      async: "{{ m2k_patch_timeout }}"
+      poll: 15
+      changed_when: true
+      register: m2k_patch_install
+
+# 安裝成功才會執行；任一個 patch 失敗時服務維持停止，由人確認後再處理
+- name: 立即啟動服務
+  ansible.builtin.meta: flush_handlers
+
+- name: 顯示服務狀態
+  when: m2k_patch_pending | length > 0 and not ansible_check_mode
+  block:
+    - name: 讀取服務狀態
+      ansible.builtin.command:
+        argv: [su, "{{ m2k_run_user }}", -c, "{{ m2k_ctrl_cmd }} -c status -s all"]
+      changed_when: false
+      failed_when: false
+      register: m2k_patch_status
+
+    - name: 顯示安裝結果
+      ansible.builtin.debug:
+        msg:
+          - "已安裝：{{ m2k_patch_pending | map(attribute='dir') | join('、') }}"
+          - "{{ m2k_patch_status.stdout_lines | default([]) }}"

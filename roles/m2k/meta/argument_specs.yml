@@ -7,12 +7,16 @@ argument_specs:
     short_description: 安裝 Mail2000
     options: {}
   patch:
-    short_description: 更新 Mail2000 到指定版本
+    short_description: 依序安裝比主機目前版本新的 Mail2000 patch，裝到最新
     options:
       m2k_version:
         type: str
         required: true
-        description: 目標版本，例如 6.2
+        description: 主機的主次版本，例如 8.0；只安裝同版本的 patch
+      m2k_patch_dir:
+        type: str
+        required: true
+        description: control node 上放 patch 檔（m2kpatchv*_Linux64.*.tgz）的目錄
 
   cert:
     short_description: 更換 Mail2000 的 Web 憑證（呼叫 web_cert）

@@ -3,3 +3,9 @@
   ansible.builtin.command:
     cmd: "{{ m2k_restart_cmd }}"
   changed_when: true
+
+# patch.yml 停止服務後由這裡啟動
+- name: Start m2k services
+  ansible.builtin.command:
+    argv: [su, "{{ m2k_run_user }}", -c, "{{ m2k_ctrl_cmd }} -s all -c start"]
+  changed_when: true
