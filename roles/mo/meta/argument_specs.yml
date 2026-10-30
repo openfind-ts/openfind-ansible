@@ -12,7 +12,11 @@ argument_specs:
       mo_version:
         type: str
         required: true
-        description: 目標版本，例如 6.2
+        description: 目標主版本，例如 6.2.11；只安裝這個主版本的 patch
+      mo_patch_dir:
+        type: str
+        required: true
+        description: control node 上放 patch tgz 的目錄，例如客戶 inventory 的 files/patch
 
   cert:
     short_description: 更換 MailAudit 的 Web 憑證（呼叫 web_cert）

@@ -1,12 +1,196 @@
 ---
-- name: 確認已指定目標版本
+# 依序安裝 mo_patch_dir 底下比主機目前版本新的 patch，裝到最新為止；已是最新就跳過。
+# 版本看 mo_version_file 第一行：標準版 mo-6.1.10.051-x86_64-linux（主版本.序號），客製版 mo-CustA_6.2.11.005-x86_64-linux（客戶代號_主版本.序號）；
+# 每個 patch 的版本看 tgz 裡的 update/mailgates/mg/etc/version，裝完後主機的版本檔會換成這一行。
+# 流程依 mo_patch_all.pl：解開到 mo_patch_work_dir，以 mo_patch_user 透過 mg_sudo 執行 patch.pl，全部裝完啟動 crond。
+- name: 確認已指定目標版本與 patch 目錄
   ansible.builtin.assert:
     that:
       - mo_version | length > 0
-    fail_msg: "請在客戶 group_vars/mo.yml 設定 mo_version"
+      - mo_patch_dir | length > 0
+    fail_msg: "請在客戶 group_vars/mo.yml 設定 mo_version 與 mo_patch_dir"
     quiet: true
 
-# TODO: 依 MailAudit patch 流程補上步驟；已是目標版本時要跳過，確保可重複執行。
-- name: 尚未實作 MailAudit patch
-  ansible.builtin.fail:
-    msg: "roles/mo/tasks/patch.yml 尚未實作，請先補上 patch 步驟"
+# --- control node：找出所有 patch 並讀出版本 ---
+- name: 找出 patch 檔
+  ansible.builtin.find:
+    paths: "{{ mo_patch_dir }}"
+    patterns: "{{ mo_patch_file_pattern }}"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  register: mo_patch_files
+
+- name: 讀取各 patch 的版本檔
+  ansible.builtin.command:
+    argv: [tar, -xzOf, "{{ item.path }}", update/mailgates/mg/etc/version]
+  loop: "{{ mo_patch_files.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  changed_when: false
+  check_mode: false
+  register: mo_patch_info
+
+# mo_patch_all.pl 會刪掉 update/process.pl 裡停止／重啟所有服務與 crond 的段落，
+# 但 patch.pl 是內嵌 process.pl 的內容執行，不讀 update/process.pl，刪了沒有作用；patch.pl 有 digest 也不能改。
+# 所以改成事先檢查：patch.pl 含這些段落就停下來，由人決定怎麼處理。
+- name: 讀取各 patch 的 patch.pl
+  ansible.builtin.command:
+    argv: [tar, -xzOf, "{{ item.path }}", patch.pl]
+  loop: "{{ mo_patch_files.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  changed_when: false
+  check_mode: false
+  register: mo_patch_script
+
+# 先清空，serial 分批重跑時才不會重複累加
+- name: 清空 patch 清單
+  ansible.builtin.set_fact:
+    mo_patch_available: []
+
+- name: 整理 patch 清單
+  ansible.builtin.set_fact:
+    mo_patch_available: "{{ mo_patch_available + [mo_patch_item] }}"
+  vars:
+    mo_patch_line: "{{ item.0.stdout_lines | first | default('') | trim }}"
+    mo_patch_parts: "{{ mo_patch_line | regex_search(mo_version_regex, '\\1', '\\2', '\\3') or ['', '', ''] }}"
+    mo_patch_item:
+      file: "{{ item.0.item.path }}"
+      line: "{{ mo_patch_line }}"
+      prefix: "{{ mo_patch_parts[0] | default('', true) }}"
+      base: "{{ mo_patch_parts[1] | default('', true) }}"
+      seq: "{{ mo_patch_parts[2] | default('', true) }}"
+      stops_all: "{{ item.1.stdout is search(mo_patch_stop_all_regex | join('|'), multiline=True) }}"
+  loop: "{{ mo_patch_info.results | zip(mo_patch_script.results) | list }}"
+  loop_control:
+    label: "{{ item.0.item.path | basename }}"
+
+- name: 確認每個 patch 都讀得到版本
+  ansible.builtin.assert:
+    that:
+      - mo_patch_available | length > 0
+      - mo_patch_available | selectattr('seq', 'equalto', '') | list | length == 0
+    fail_msg: >-
+      {{ mo_patch_dir }} 沒有 patch，或有 patch 的版本檔不是 mo-<客戶代號>_<版本>.<序號>-... 格式：
+      {{ mo_patch_available | selectattr('seq', 'equalto', '') | map(attribute='file') | map('basename') | join('、') }}
+    quiet: true
+
+- name: 確認 patch 不會停止或重啟所有服務
+  ansible.builtin.assert:
+    that:
+      - mo_patch_available | selectattr('stops_all') | list | length == 0
+    fail_msg: >-
+      這些 patch 的 patch.pl 會停止／重啟所有服務或 crond，舊腳本的 ChgProcess 對內嵌格式無效，請先確認處理方式：
+      {{ mo_patch_available | selectattr('stops_all') | map(attribute='file') | map('basename') | join('、') }}
+    quiet: true
+
+# --- 主機：判斷目前版本與要裝的 patch ---
+- name: 讀取這台的版本檔
+  ansible.builtin.slurp:
+    src: "{{ mo_version_file }}"
+  register: mo_version_content
+
+- name: 計算要安裝的 patch
+  ansible.builtin.set_fact:
+    mo_patch_current: "{{ mo_patch_current_line }}"
+    mo_patch_pending: >-
+      {{ mo_patch_available
+         | selectattr('prefix', 'equalto', mo_patch_current_parts[0] | default('', true))
+         | selectattr('base', 'equalto', mo_version)
+         | rejectattr('seq', 'le', mo_patch_current_parts[2] | default('', true))
+         | sort(attribute='seq') }}
+    mo_patch_current_ok: >-
+      {{ mo_patch_current_parts | length > 0
+         and mo_patch_current_parts[1] == mo_version
+         and mo_patch_current_parts[2] | default('', true) | length > 0
+         and mo_patch_available
+             | selectattr('prefix', 'equalto', mo_patch_current_parts[0] | default('', true))
+             | selectattr('base', 'equalto', mo_version) | list | length > 0 }}
+  vars:
+    mo_patch_current_line: "{{ (mo_version_content.content | b64decode).splitlines() | first | default('') | trim }}"
+    mo_patch_current_parts: "{{ mo_patch_current_line | regex_search(mo_version_regex, '\\1', '\\2', '\\3') or [] }}"
+
+# 主機版本不是 mo_version、沒有序號、或客戶代號與 patch 不同（含標準版與客製版混用）就停下，不自行判斷該從哪個 patch 裝起
+- name: 確認主機版本可判斷
+  ansible.builtin.assert:
+    that:
+      - mo_patch_current_ok
+    fail_msg: >-
+      {{ mo_version_file }} 第一行是「{{ mo_patch_current }}」，不是 mo_version={{ mo_version }} 且帶序號的版本，
+      或客戶代號與 {{ mo_patch_dir }} 的 patch 不同，無法判斷要裝哪些 patch
+    quiet: true
+
+- name: 顯示安裝計畫
+  ansible.builtin.debug:
+    msg: "目前 {{ mo_patch_current }}；{{ mo_patch_plan }}"
+  vars:
+    mo_patch_plan: >-
+      {{ '將依序安裝 ' ~ (mo_patch_pending | map(attribute='file') | map('basename') | join(' → '))
+         if mo_patch_pending | length > 0 else '已是最新，不需安裝' }}
+
+# --- 安裝：傳檔、依序執行 patch.pl、啟動 crond ---
+- name: 安裝 patch
+  when: mo_patch_pending | length > 0
+  block:
+    - name: 建立 patch 上傳目錄
+      ansible.builtin.file:
+        path: "{{ mo_patch_upload_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    # 傳完留在上傳目錄，交給系統的 tmp 清理機制
+    - name: 傳送 patch
+      ansible.builtin.copy:
+        src: "{{ item.file }}"
+        dest: "{{ mo_patch_upload_dir }}/{{ item.file | basename }}"
+        owner: root
+        group: root
+        mode: "0600"
+      loop: "{{ mo_patch_pending }}"
+      loop_control:
+        label: "{{ item.file | basename }}"
+
+    # patch.pl 寫死從 mo_patch_work_dir 讀 update/，每個 patch 都要先清掉上一個再解開
+    # patch.pl 自己會停／啟需要的服務（例如 syncd），失敗時會自己還原
+    # 用一個 shell 依序執行，任一個失敗就停，不會接著裝後面的 patch；每裝完一個確認版本檔已更新
+    # 非同步執行：SSH 斷線或控制機中斷時 patch.pl 仍會在主機上裝完，不會裝到一半；超過 mo_patch_timeout 會被終止
+    - name: 依序執行 patch.pl
+      ansible.builtin.shell:
+        executable: /bin/bash
+        cmd: |
+          set -eo pipefail
+          cd {{ mo_patch_work_dir | quote }}
+          {% for p in mo_patch_pending %}
+          echo "===== {{ p.line }}"
+          rm -rf patch.pl patch.pl.digest update
+          tar -xzf {{ (mo_patch_upload_dir ~ '/' ~ (p.file | basename)) | quote }} -C .
+          su {{ mo_patch_user }} -c {{ (mo_sudo_cmd ~ ' ' ~ mo_patch_work_dir ~ '/patch.pl 2>&1') | quote }}
+          test "$(head -n1 {{ mo_version_file | quote }})" = {{ p.line | quote }}
+          {% endfor %}
+      async: "{{ mo_patch_timeout }}"
+      poll: 15
+      changed_when: true
+      register: mo_patch_install
+      when: not ansible_check_mode    # async 不能在 --check 執行；預演只顯示安裝計畫
+
+    # mo_patch_all.pl 裝完一律啟動 crond
+    - name: 確認 crond 已啟動
+      ansible.builtin.service:
+        name: crond
+        state: started
+
+    - name: 顯示安裝結果
+      ansible.builtin.debug:
+        msg:
+          - "已安裝：{{ mo_patch_pending | map(attribute='line') | join('、') }}"
+          - "{{ mo_patch_install.stdout_lines | default([]) }}"
+      when: not ansible_check_mode

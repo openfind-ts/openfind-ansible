@@ -15,6 +15,24 @@ mo_key_src: ""   # 私鑰須以 ansible-vault encrypt 加密
 # patch.yml 的目標版本，由客戶 group_vars/mo.yml 指定
 mo_version: ""
 
+# patch.yml：control node 上放 patch 的目錄，由客戶 group_vars/mo.yml 指定，例如 "{{ inventory_dir }}/files/patch/mo"
+mo_patch_dir: ""
+mo_patch_file_pattern: "patch-mo-*.tgz"
+# 版本檔第一行，標準版例如 mo-6.1.10.051-x86_64-linux，客製版例如 mo-CustA_6.2.11.005-x86_64-linux；patch 會覆蓋這個檔
+mo_version_file: "{{ mo_install_dir }}/mg/etc/version"
+# 版本字串：mo-[客戶代號_]主版本[.序號]-平台（標準版沒有客戶代號），取出 客戶代號、主版本、序號
+mo_version_regex: '^mo-(?:([^-\s]+)_)?(\d+\.\d+\.\d+)(?:\.(\d{3}))?-\S+$'
+mo_patch_upload_dir: /tmp/mo_patch   # 主機上放 tgz 的位置，裝完不清，交給系統的 tmp 清理
+mo_patch_work_dir: "{{ mo_install_dir }}/mg/tmp"   # patch.pl 寫死從這裡讀 update/，不可改
+mo_patch_user: webmail   # 以這個帳號透過 mg_sudo 執行 patch.pl
+mo_sudo_cmd: "{{ mo_install_dir }}/mg/util/mg_sudo"
+mo_patch_timeout: 3600   # 所有 patch 的 patch.pl 合計最長秒數，超過會被終止；尚未實測
+# patch.pl 含這些段落代表會停止／重啟所有服務或 crond，patch.yml 遇到會停下（來自 mo_patch_all.pl 的 ChgProcess）
+mo_patch_stop_all_regex:
+  - '# stop deamon all'
+  - '# restart all d[ae][ae]mons'
+  - '# start crond'
+
 # 這個產品內含的元件，CVE 掃描（playbooks/cve_check.yml）只掃有列出的元件
 mo_components: [php]
 # 各元件的實際位置；有寫就只搜這些目錄，沒寫才搜整個安裝目錄
