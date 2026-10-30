@@ -21,7 +21,8 @@ m2k_version: ""
 # patch.yml：control node 上放 patch 的目錄，由客戶 group_vars/m2k.yml 指定，例如 "{{ inventory_dir }}/files/patch"
 m2k_patch_dir: ""
 m2k_patch_file_pattern: "m2kpatchv*_Linux64.*.tgz"
-m2k_patch_tmp_dir: /tmp    # 主機上解開 patch 的位置，裝完不清，交給系統的 tmp 清理
+m2k_patch_record_file: "{{ m2k_install_dir }}/etc/m2kpatch.info"   # installer 寫的安裝紀錄；多主機共用 etc 時應 link 到各台本機
+m2k_patch_tmp_dir: /tmp   # 主機上解開 patch 的位置，裝完不清，交給系統的 tmp 清理
 m2k_patch_timeout: 3600    # 所有 patch 的 installer 合計最長秒數，超過會被終止；實測兩個 patch 約 3–4 分鐘
 m2k_ctrl_cmd: "{{ m2k_install_dir }}/tools/m2kctrl"   # 以 m2k_run_user 執行：-s all -c stop|start|status
 

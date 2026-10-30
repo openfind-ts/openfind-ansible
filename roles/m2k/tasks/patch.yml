@@ -1,6 +1,6 @@
 ---
 # 依序安裝 m2k_patch_dir 底下比主機目前版本新的 patch，裝到最新為止；已是最新就跳過。
-# 目前只適用客製化客戶：版本看 system_version.info 第一欄，patch 名稱看 patch.info 的 Name，格式都是 mp + 主次版本 + 建置時間。
+# 目前只適用客製化客戶：已裝的 patch 看 m2kpatch.info，patch 名稱看 patch.info 的 Name，格式都是 mp + 主次版本 + 建置時間。
 - name: 確認已指定目標版本與 patch 目錄
   ansible.builtin.assert:
     that:
@@ -68,38 +68,43 @@
     quiet: true
 
 # --- 主機：判斷目前版本與要裝的 patch ---
-- name: 讀取目前版本
+# 看 installer 自己寫的安裝紀錄 m2kpatch.info，不看 system_version.info：
+# 多主機共用 /webmail/etc 時 system_version.info 是共用的，m2kpatch.info 可 link 到各台本機（installer 用附加寫入，link 會保留）
+- name: 讀取這台的 patch 安裝紀錄
   ansible.builtin.slurp:
-    src: "{{ m2k_version_file }}"
-  register: m2k_patch_version_file
+    src: "{{ m2k_patch_record_file }}"
+  register: m2k_patch_record
 
+# 目前版本 = 紀錄中與 m2k_version 同主次版本、時間最新的一筆（紀錄可能有重複或順序不一）
 - name: 計算要安裝的 patch
   ansible.builtin.set_fact:
-    m2k_patch_current: "{{ m2k_patch_current_name }}"
+    m2k_patch_current: "{{ m2k_patch_recorded | max if m2k_patch_recorded | length > 0 else '' }}"
     m2k_patch_pending: >-
       {{ m2k_patch_available
-         | selectattr('major', 'equalto', m2k_patch_current_name[2:4])
-         | selectattr('stamp', 'gt', m2k_patch_current_name[4:])
+         | selectattr('major', 'equalto', m2k_patch_major)
+         | selectattr('stamp', 'gt', (m2k_patch_recorded | max)[4:] if m2k_patch_recorded | length > 0 else '9999999999')
          | sort(attribute='stamp') }}
   vars:
-    m2k_patch_current_name: "{{ (m2k_patch_version_file.content | b64decode).split() | first | default('') }}"
+    m2k_patch_major: "{{ m2k_version | replace('.', '') }}"
+    m2k_patch_recorded: >-
+      {{ (m2k_patch_record.content | b64decode).splitlines()
+         | map('regex_replace', '^\s*(\S*).*$', '\1')
+         | select('match', '^mp' ~ m2k_patch_major ~ '\d{10}$') | list }}
 
-- name: 確認目前版本格式與 m2k_version 相符
+- name: 確認安裝紀錄裡有這個版本的 patch
   ansible.builtin.assert:
     that:
-      - m2k_patch_current is match('^mp\d{12}$')
-      - m2k_patch_current[2:4] == m2k_version | replace('.', '')
-    fail_msg: >-
-      {{ m2k_version_file }} 第一欄是 {{ m2k_patch_current }}，
-      不是 mp + 主次版本 + 建置時間的格式，或與 m2k_version={{ m2k_version }} 不符
+      - m2k_patch_current | length > 0
+    fail_msg: "{{ m2k_patch_record_file }} 找不到 m2k_version={{ m2k_version }} 的 patch 紀錄（mp{{ m2k_version | replace('.', '') }}...）"
     quiet: true
 
 - name: 顯示安裝計畫
   ansible.builtin.debug:
-    msg: >-
-      目前 {{ m2k_patch_current }}；
-      {% if m2k_patch_pending | length > 0 %}將依序安裝 {{ m2k_patch_pending | map(attribute='dir') | join(' → ') }}
-      {%- else %}已是最新，不需安裝{% endif %}
+    msg: "目前 {{ m2k_patch_current }}；{{ m2k_patch_plan }}"
+  vars:
+    m2k_patch_plan: >-
+      {{ '將依序安裝 ' ~ (m2k_patch_pending | map(attribute='dir') | join(' → '))
+         if m2k_patch_pending | length > 0 else '已是最新，不需安裝' }}
 
 # --- 安裝：傳檔、停服務、依序執行 installer、啟動服務 ---
 - name: 安裝 patch
@@ -126,13 +131,14 @@
     # 非同步執行：SSH 斷線或控制機中斷時 installer 仍會在主機上裝完，不會裝到一半；超過 m2k_patch_timeout 會被終止，要設寬一點
     - name: 依序執行 patch_installer.pl
       ansible.builtin.shell:
+        executable: /bin/bash
         cmd: |
-          set -e
+          set -eo pipefail
           {% for p in m2k_patch_pending %}
           echo "===== {{ p.dir }}（{{ p.name }}）"
           cd {{ (m2k_patch_tmp_dir ~ '/' ~ p.dir) | quote }}
           perl patch_installer.pl
-          test "$(cut -f1 {{ m2k_version_file | quote }})" = "{{ p.name }}"
+          test "$(tail -n1 {{ m2k_patch_record_file | quote }} | cut -f1)" = "{{ p.name }}"
           {% endfor %}
       async: "{{ m2k_patch_timeout }}"
       poll: 15
