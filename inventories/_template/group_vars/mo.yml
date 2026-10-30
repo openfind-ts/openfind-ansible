@@ -1,0 +1,6 @@
+---
+# 這個客戶的 MO 差異設定。產品標準值在 roles/mo/defaults/main.yml，不要重複寫在這裡
+mo_version: "6.1.10"   # 主版本，對應版本檔 mo-6.1.10.051-x86_64-linux 的 6.1.10；客製版也只寫主版本
+mo_patch_dir: "{{ inventory_dir }}/files/patch/mo"   # patch 依產品放 files/patch/<產品>/
+mo_cert_src: "{{ inventory_dir }}/files/mo.crt"
+mo_key_src: "{{ inventory_dir }}/files/mo.key"    # 先執行 ansible-vault encrypt files/mo.key

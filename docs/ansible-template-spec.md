@@ -215,12 +215,16 @@ ansible-playbook -i ../customer-inventories/customer-a playbooks/patch.yml --lim
 customer-a/
 ├── hosts.yml
 ├── files/                # 客戶專屬檔案，例如憑證；私鑰須 ansible-vault 加密
+│   └── patch/
+│       ├── m2k/          # 各產品的 patch 分開放
+│       └── mo/
 ├── group_vars/
 │   ├── all/
 │   │   ├── main.yml      # 連線帳號、NTP 等所有主機共用設定
 │   │   └── vault.yml     # 密碼，一定要用 ansible-vault 加密
 │   ├── mg.yml            # 這個客戶的 MG 差異
-│   └── m2k.yml
+│   ├── m2k.yml
+│   └── mo.yml
 └── host_vars/
     └── mg01.yml          # 單台主機的例外
 ```
@@ -261,6 +265,7 @@ all:
 - 客戶沒有的產品，就不建那個群組，也不建對應的 `group_vars` 檔。
 - 一台主機裝了兩個產品時，同時放進兩個產品群組。
 - 客戶的憑證放客戶資料夾的 `files/`，在 `group_vars/<產品>.yml` 用 `"{{ inventory_dir }}/files/<檔名>"` 指定。
+- 客戶的 patch 依產品放在 `files/patch/<產品>/`，在 `group_vars/<產品>.yml` 用 `<產品>_patch_dir: "{{ inventory_dir }}/files/patch/<產品>"` 指定。客戶有多個產品時，各產品的 patch 不可混放在同一個目錄。
 
 ## 7. 變數分層與命名規則
 

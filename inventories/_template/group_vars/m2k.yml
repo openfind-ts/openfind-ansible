@@ -3,3 +3,4 @@
 m2k_version: "8.0"
 m2k_cert_src: "{{ inventory_dir }}/files/m2k.crt"
 m2k_key_src: "{{ inventory_dir }}/files/m2k.key"
+m2k_patch_dir: "{{ inventory_dir }}/files/patch/m2k"   # patch 依產品放 files/patch/<產品>/

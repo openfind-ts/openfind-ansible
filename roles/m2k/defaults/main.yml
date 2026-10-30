@@ -20,7 +20,7 @@ m2k_key_src: ""   # 私鑰須以 ansible-vault encrypt 加密
 # patch.yml 的目標版本，由客戶 group_vars/m2k.yml 指定
 m2k_version: ""
 
-# patch.yml：control node 上放 patch 的目錄，由客戶 group_vars/m2k.yml 指定，例如 "{{ inventory_dir }}/files/patch"
+# patch.yml：control node 上放 patch 的目錄，由客戶 group_vars/m2k.yml 指定，例如 "{{ inventory_dir }}/files/patch/m2k"
 m2k_patch_dir: ""
 m2k_patch_file_pattern: "m2kpatchv*_Linux64.*.tgz"
 m2k_patch_record_file: "{{ m2k_install_dir }}/etc/m2kpatch.info"   # installer 寫的安裝紀錄；多主機共用 etc 時應 link 到各台本機
