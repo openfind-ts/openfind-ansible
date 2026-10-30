@@ -7,7 +7,7 @@ playbook 用 `include_role` + `tasks_from` 指定要跑哪個檔。
 
 - `install.yml`、`patch.yml`：尚未實作，執行會直接報錯停止。
 - `cert.yml`：可用，呼叫 `web_cert`。
-- `check.yml`：可用，只讀不改。
+- `check.yml`：可用，只讀不改。版本從 `m2k_version_file`（`system_version.info` 第一欄）讀取，目前只確認客製化客戶適用。
 - `weakscan.yml`：產品層弱掃項目尚未定義，所以還沒建這個檔。
 
 ## 標準值

@@ -12,6 +12,38 @@
     fail_msg: "找不到 {{ m2k_install_dir }}"
     quiet: true
 
+# 版本：客製化客戶看 system_version.info 第一欄，格式 mp + 主次版本 + 建置時間 YYMMDDhhmm（例如 mp802610071818）
+# TODO: 非客製化客戶的版本查法尚未確認
+- name: 檢查版本檔
+  ansible.builtin.stat:
+    path: "{{ m2k_version_file }}"
+  register: m2k_version_file_stat
+
+- name: 讀取版本檔
+  ansible.builtin.slurp:
+    src: "{{ m2k_version_file }}"
+  register: m2k_version_file_content
+  when: m2k_version_file_stat.stat.exists
+
+- name: 顯示版本
+  ansible.builtin.debug:
+    msg: "{{ m2k_version_msg }}（{{ m2k_version_raw }}）{{ m2k_version_mismatch }}"
+  vars:
+    m2k_version_raw: "{{ (m2k_version_file_content.content | b64decode).split() | first | default('') }}"
+    m2k_version_parts: "{{ m2k_version_raw | regex_search('^mp(\\d)(\\d)(\\d{10})$', '\\1', '\\2', '\\3') }}"
+    m2k_version_found: "{{ m2k_version_parts[0] ~ '.' ~ m2k_version_parts[1] if m2k_version_parts else '' }}"
+    m2k_version_built: "{{ m2k_version_parts[2] | regex_replace('^(..)(..)(..)(..)(..)$', '20\\1-\\2-\\3 \\4:\\5') if m2k_version_parts else '' }}"
+    m2k_version_msg: "{{ 'M2K ' ~ m2k_version_found ~ '，建置時間 ' ~ m2k_version_built if m2k_version_parts else '無法解析版本字串' }}"
+    m2k_version_mismatch: >-
+      {{ '；注意：inventory 的 m2k_version=' ~ m2k_version ~ ' 與主機不符'
+         if m2k_version | length > 0 and m2k_version_found | length > 0 and m2k_version != m2k_version_found else '' }}
+  when: m2k_version_file_stat.stat.exists
+
+- name: 版本檔不存在
+  ansible.builtin.debug:
+    msg: "找不到 {{ m2k_version_file }}，無法判斷版本（非客製化客戶的版本查法尚未定義）"
+  when: not m2k_version_file_stat.stat.exists
+
 
 - name: 讀取憑證到期日
   ansible.builtin.command:

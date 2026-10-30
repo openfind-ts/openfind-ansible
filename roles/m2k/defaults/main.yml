@@ -5,6 +5,9 @@ m2k_conf_dir: "{{ m2k_install_dir }}/httpd/conf"
 m2k_run_user: webmail
 m2k_restart_cmd: /webmail/tools/m2kctrl httpd restart
 
+# check.yml 讀取的版本檔（客製化客戶確認可用；第一欄格式見 check.yml）
+m2k_version_file: "{{ m2k_install_dir }}/etc/system_version.info"
+
 # 換憑證（cert.yml → web_cert）
 m2k_ssl_conf: "TODO"  # TODO: 確認 M2K 的 SSL 設定檔路徑
 m2k_ssl_include: "TODO"  # TODO: 確認是否需要在 httpd.conf 啟用 Include；不需要請改成空字串 ""
