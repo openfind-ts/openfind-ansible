@@ -17,31 +17,81 @@
       web_cert_ssl_conf: "{{ web_cert_ssl_conf }}"
       web_cert_restart_cmd: "{{ web_cert_restart_cmd }}"
 
-- name: 確認 Include 設定不是 TODO
+- name: 確認 Include 與各站設定不是 TODO
   ansible.builtin.assert:
     that:
       - web_cert_include is not search('TODO')
-    fail_msg: "web_cert_include 仍是 TODO：需要 Include 就填路徑，不需要就改成空字串"
+      - web_cert_sites | map(attribute='ssl_conf') | select('search', 'TODO') | list | length == 0
+      - web_cert_sites | map(attribute='cert_dir') | select('search', 'TODO') | list | length == 0
+    fail_msg: "web_cert_include 或 web_cert_sites 仍有 TODO：Include 不需要就改成空字串"
     quiet: true
+
+# 檔名後綴由憑證本身決定（生效時間＋指紋），同一張憑證重跑不會再產生新檔
+- name: 讀取新憑證的生效時間與指紋
+  ansible.builtin.command:
+    argv: [openssl, x509, -noout, -startdate, -fingerprint, -sha256, -in, "{{ web_cert_crt_src }}"]
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  check_mode: false
+  register: web_cert_new_info
+
+- name: 決定主機上的檔名
+  ansible.builtin.set_fact:
+    web_cert_crt_name: "{{ (web_cert_name_prefix ~ '.crt.' ~ suffix) if web_cert_versioned else (web_cert_crt_src | basename) }}"
+    web_cert_key_name: "{{ (web_cert_name_prefix ~ '.key.' ~ suffix) if web_cert_versioned else (web_cert_key_src | basename) }}"
+    web_cert_chain_name: "{{ '' if web_cert_chain_src | length == 0 else
+      ((web_cert_name_prefix ~ '-ca.crt.' ~ suffix) if web_cert_versioned else (web_cert_chain_src | basename)) }}"
+    web_cert_new_pem: "{{ lookup('ansible.builtin.file', web_cert_crt_src) | regex_search(pem_re) | regex_replace('\\s', '') }}"
+  vars:
+    pem_re: '-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----'
+    not_before: "{{ web_cert_new_info.stdout | regex_search('notBefore=(.*)', '\\1') | first }}"
+    fingerprint: "{{ web_cert_new_info.stdout | regex_search('Fingerprint=(.*)', '\\1', ignorecase=true) | first }}"
+    suffix: "{{ (not_before | to_datetime('%b %d %H:%M:%S %Y GMT')).strftime('%Y%m%d_%H%M') ~ '.' ~ (fingerprint | replace(':', '') | lower)[:8] }}"
+
+- name: 整理要設定的 directive
+  ansible.builtin.set_fact:
+    web_cert_directives:
+      - {directive: SSLCertificateFile, name: "{{ web_cert_crt_name }}"}
+      - {directive: SSLCertificateKeyFile, name: "{{ web_cert_key_name }}"}
+      # 沒給中繼憑證時：固定檔名模式不動原設定；保留歷史模式會把舊的 ChainFile 註解掉，避免指向別張憑證的 CA
+      - {directive: SSLCertificateChainFile, name: "{{ web_cert_chain_name }}"}
+
+# 憑證目錄與 httpd.conf 同一層時不動目錄權限
+- name: 建立憑證目錄
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ web_cert_owner }}"
+    group: "{{ web_cert_group }}"
+    mode: "0700"
+  loop: "{{ web_cert_sites | map(attribute='cert_dir') | unique | reject('equalto', web_cert_conf_dir) | list }}"
 
 - name: 上傳憑證
   ansible.builtin.copy:
-    src: "{{ web_cert_crt_src }}"
-    dest: "{{ web_cert_conf_dir }}/{{ web_cert_crt_src | basename }}"
+    src: "{{ item.0.src }}"
+    dest: "{{ item.1 }}/{{ item.0.name }}"
     owner: "{{ web_cert_owner }}"
     group: "{{ web_cert_group }}"
-    mode: "0644"
-    backup: true
+    mode: "{{ web_cert_crt_mode }}"
+    backup: "{{ not web_cert_versioned }}"
+  loop: "{{ crt_files | product(web_cert_sites | map(attribute='cert_dir') | unique) | list }}"
+  loop_control:
+    label: "{{ item.1 }}/{{ item.0.name }}"
+  vars:
+    crt_files: "{{ [{'src': web_cert_crt_src, 'name': web_cert_crt_name}]
+      + ([{'src': web_cert_chain_src, 'name': web_cert_chain_name}] if web_cert_chain_name | length > 0 else []) }}"
   notify: Restart web service
 
 - name: 上傳私鑰
   ansible.builtin.copy:
     src: "{{ web_cert_key_src }}"
-    dest: "{{ web_cert_conf_dir }}/{{ web_cert_key_src | basename }}"
+    dest: "{{ item }}/{{ web_cert_key_name }}"
     owner: "{{ web_cert_owner }}"
     group: "{{ web_cert_group }}"
     mode: "0600"
-    backup: true
+    backup: "{{ not web_cert_versioned }}"
+  loop: "{{ web_cert_sites | map(attribute='cert_dir') | unique | list }}"
   diff: false   # 避免 --diff 印出私鑰內容
   notify: Restart web service
 
@@ -54,17 +104,102 @@
   when: web_cert_include | length > 0
   notify: Restart web service
 
+# 固定檔名：直接改掉原本那一行；只有註解範例時加在最後一行註解之後（留在原本的 VirtualHost 裡）
 - name: SSL 設定指向新憑證
   ansible.builtin.lineinfile:
-    path: "{{ web_cert_ssl_conf }}"
-    regexp: "{{ item.regexp }}"
-    line: "{{ item.line }}"
+    path: "{{ item.0.ssl_conf }}"
+    regexp: '^\s*{{ item.1.directive }}\s'
+    insertafter: '^\s*#\s*{{ item.1.directive }}\s'
+    line: '{{ item.1.directive }} "{{ item.0.cert_dir }}/{{ item.1.name }}"'
     backup: true
-  loop:
-    - regexp: '^\s*SSLCertificateFile\s'
-      line: 'SSLCertificateFile "{{ web_cert_conf_dir }}/{{ web_cert_crt_src | basename }}"'
-    - regexp: '^\s*SSLCertificateKeyFile\s'
-      line: 'SSLCertificateKeyFile "{{ web_cert_conf_dir }}/{{ web_cert_key_src | basename }}"'
+  loop: "{{ web_cert_sites | product(web_cert_directives | selectattr('name')) | list }}"
   loop_control:
-    label: "{{ item.line }}"
+    label: "{{ item.0.ssl_conf }}: {{ item.1.directive }}"
+  when: not web_cert_versioned
   notify: Restart web service
+
+# 保留歷史（M2K 慣例）：原本生效的那行註解掉，新的一行加在同一組註解的最上面
+- name: 註解掉舊的憑證設定
+  ansible.builtin.replace:
+    path: "{{ item.0.ssl_conf }}"
+    regexp: '^(\s*)({{ item.1.directive }}\s+(?!"?{{ new_path | regex_escape }}"?\s*$).*)$'
+    replace: '\1#\2'
+    backup: true
+  loop: "{{ web_cert_sites | product(web_cert_directives) | list }}"
+  loop_control:
+    label: "{{ item.0.ssl_conf }}: {{ item.1.directive }}"
+  vars:
+    new_path: "{{ item.0.cert_dir }}/{{ item.1.name if item.1.name else '-' }}"
+  when: web_cert_versioned
+  notify: Restart web service
+
+- name: 加入新的憑證設定
+  ansible.builtin.lineinfile:
+    path: "{{ item.0.ssl_conf }}"
+    regexp: '^\s*{{ item.1.directive }}\s+"?{{ new_path | regex_escape }}"?\s*$'
+    insertbefore: '^\s*#\s*{{ item.1.directive }}(\s|$)'
+    firstmatch: true
+    line: '{{ item.1.directive }} "{{ new_path }}"'
+  loop: "{{ web_cert_sites | product(web_cert_directives | selectattr('name')) | list }}"
+  loop_control:
+    label: "{{ item.0.ssl_conf }}: {{ item.1.directive }}"
+  vars:
+    new_path: "{{ item.0.cert_dir }}/{{ item.1.name }}"
+  when: web_cert_versioned
+  notify: Restart web service
+
+# 不管設定檔有沒有變動，主機實際送出的不是新憑證就重啟：
+# 多台共用 NAS 上的設定時，第二台檔案已是新的，但 httpd 仍在用舊憑證
+- name: 檢查目前送出的憑證
+  ansible.builtin.command:
+    argv: "{{ [web_cert_openssl, 's_client', '-connect', '127.0.0.1:' ~ web_cert_verify_port]
+      + (['-servername', item.server_name] if item.server_name | default('') | length > 0 else []) }}"
+    stdin: ""
+  loop: "{{ web_cert_sites }}"
+  loop_control:
+    label: "{{ item.server_name | default('127.0.0.1') }}"
+  register: web_cert_served
+  check_mode: false
+  failed_when: false
+  changed_when: >-
+    (web_cert_served.stdout | regex_search('-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----')
+    | default('', true) | regex_replace('\s', '')) != web_cert_new_pem
+  when: web_cert_verify_port | int > 0
+  notify: Restart web service
+
+- name: 執行重啟
+  ansible.builtin.meta: flush_handlers
+
+- name: 確認已送出新憑證
+  ansible.builtin.command:
+    argv: "{{ [web_cert_openssl, 's_client', '-connect', '127.0.0.1:' ~ web_cert_verify_port]
+      + (['-servername', item.server_name] if item.server_name | default('') | length > 0 else []) }}"
+    stdin: ""
+  loop: "{{ web_cert_sites }}"
+  loop_control:
+    label: "{{ item.server_name | default('127.0.0.1') }}"
+  register: web_cert_verify
+  changed_when: false
+  failed_when: false
+  until: >-
+    (web_cert_verify.stdout | regex_search('-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----')
+    | default('', true) | regex_replace('\s', '')) == web_cert_new_pem
+  retries: 10
+  delay: 3
+  when:
+    - web_cert_verify_port | int > 0
+    - not ansible_check_mode
+
+- name: 新憑證沒有生效就停止
+  ansible.builtin.assert:
+    that: item is skipped or
+      (item.stdout | regex_search('-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----')
+      | default('', true) | regex_replace('\s', '')) == web_cert_new_pem
+    fail_msg: "{{ item.item.server_name | default('127.0.0.1') }}:{{ web_cert_verify_port }} 送出的仍不是新憑證，請人工確認"
+    quiet: true
+  loop: "{{ web_cert_verify.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.server_name | default('127.0.0.1') }}"
+  when:
+    - web_cert_verify_port | int > 0
+    - not ansible_check_mode

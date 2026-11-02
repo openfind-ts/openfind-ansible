@@ -3,7 +3,9 @@
 m2k_install_dir: /webmail
 m2k_conf_dir: "{{ m2k_install_dir }}/httpd/conf"
 m2k_run_user: webmail
-m2k_restart_cmd: /webmail/tools/m2kctrl httpd restart
+# httpd 以 m2k_run_user 執行，重啟也用同一個身分（同 patch.yml 呼叫 m2kctrl 的方式）
+m2k_restart_cmd: "su {{ m2k_run_user }} -c '{{ m2k_ctrl_cmd }} -s httpd -c restart'"
+m2k_configtest_cmd: "su {{ m2k_run_user }} -c '{{ m2k_install_dir }}/httpd/bin/httpd -t'"
 
 # check.yml 讀取的版本檔（客製化客戶確認可用；第一欄格式見 check.yml）
 m2k_version_file: "{{ m2k_install_dir }}/etc/system_version.info"
@@ -11,11 +13,19 @@ m2k_version_file: "{{ m2k_install_dir }}/etc/system_version.info"
 m2k_check_patch_record: false
 
 # 換憑證（cert.yml → web_cert）
-m2k_ssl_conf: "TODO"  # TODO: 確認 M2K 的 SSL 設定檔路徑
-m2k_ssl_include: "TODO"  # TODO: 確認是否需要在 httpd.conf 啟用 Include；不需要請改成空字串 ""
-m2k_cert_owner: "{{ m2k_run_user }}"  # TODO: 確認憑證檔擁有者
-m2k_cert_src: ""  # 由客戶 group_vars/m2k.yml 指定，例如 "{{ inventory_dir }}/files/m2k.crt"
-m2k_key_src: ""   # 私鑰須以 ansible-vault encrypt 加密
+# 依 M2K 8.0 現場設定：SSL 在 extra/m2k_ssl.conf（新安裝在 httpd.conf 是註解掉的，跑完會開始聽 443）；
+# 照現場慣例上傳成 m2k_server.crt|key / m2k_server-ca.crt 加後綴，新設定行放最上面、舊的註解保留
+# ACME 自動續約的站（cert.pem/privkey.pem/chain.pem）不要用這個 playbook
+m2k_ssl_conf: "{{ m2k_conf_dir }}/extra/m2k_ssl.conf"
+m2k_ssl_include: conf/extra/m2k_ssl.conf
+m2k_cert_dir: "{{ m2k_conf_dir }}/ssl"
+m2k_cert_owner: "{{ m2k_run_user }}"
+m2k_cert_src: ""   # 由客戶 group_vars/m2k.yml 指定，例如 "{{ inventory_dir }}/files/m2k.crt"；只放伺服器憑證
+m2k_chain_src: ""  # 中繼憑證，例如 "{{ inventory_dir }}/files/m2k-ca.crt"；空字串會把舊的 SSLCertificateChainFile 註解掉
+m2k_key_src: ""    # 私鑰須以 ansible-vault encrypt 加密
+# 用同一張憑證的其他網域 vhost（extra/ssl.d/*.conf），由客戶 inventory 列出，例如：
+#   - {ssl_conf: /webmail/httpd/conf/extra/ssl.d/example.com.conf, cert_dir: /webmail/httpd/ssl/example.com, server_name: mail.example.com}
+m2k_cert_vhosts: []
 
 # patch.yml 的目標版本，由客戶 group_vars/m2k.yml 指定
 m2k_version: ""

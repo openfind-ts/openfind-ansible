@@ -4,3 +4,9 @@ m2k_version: "8.0"
 m2k_cert_src: "{{ inventory_dir }}/files/m2k.crt"
 m2k_key_src: "{{ inventory_dir }}/files/m2k.key"
 m2k_patch_dir: "{{ inventory_dir }}/files/patch/m2k"   # patch 依產品放 files/patch/<產品>/
+m2k_chain_src: "{{ inventory_dir }}/files/m2k-ca.crt"   # 中繼憑證；沒有就刪掉這行
+# 用同一張憑證的其他網域 vhost（沒有就不用寫）
+# m2k_cert_vhosts:
+#   - ssl_conf: /webmail/httpd/conf/extra/ssl.d/example.com.conf
+#     cert_dir: /webmail/httpd/ssl/example.com
+#     server_name: mail.example.com

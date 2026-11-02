@@ -5,8 +5,15 @@
   vars:
     web_cert_crt_src: "{{ m2k_cert_src }}"
     web_cert_key_src: "{{ m2k_key_src }}"
+    web_cert_chain_src: "{{ m2k_chain_src }}"
     web_cert_conf_dir: "{{ m2k_conf_dir }}"
     web_cert_ssl_conf: "{{ m2k_ssl_conf }}"
+    web_cert_sites: "{{ [{'ssl_conf': m2k_ssl_conf, 'cert_dir': m2k_cert_dir}] + m2k_cert_vhosts }}"
     web_cert_include: "{{ m2k_ssl_include }}"
     web_cert_owner: "{{ m2k_cert_owner }}"
+    web_cert_crt_mode: "0600"
+    web_cert_versioned: true
+    web_cert_name_prefix: m2k_server
     web_cert_restart_cmd: "{{ m2k_restart_cmd }}"
+    web_cert_configtest_cmd: "{{ m2k_configtest_cmd }}"
+    web_cert_verify_port: 443

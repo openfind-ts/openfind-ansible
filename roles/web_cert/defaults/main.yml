@@ -1,10 +1,25 @@
 ---
 # 通用 role：Apache 換憑證。不寫死任何產品路徑，全部由產品 role 的 cert.yml 帶入。
-web_cert_crt_src: ""        # control node 上的憑證檔
+web_cert_crt_src: ""        # control node 上的憑證檔（只放伺服器憑證時，中繼憑證另外給 web_cert_chain_src）
 web_cert_key_src: ""        # control node 上的私鑰檔（ansible-vault 加密，copy 時自動解密）
-web_cert_conf_dir: ""       # 憑證要放到主機上的目錄，同時也是 httpd.conf 所在目錄
+web_cert_chain_src: ""      # control node 上的中繼憑證；空字串表示沒有（或已接在憑證檔後面）
+web_cert_conf_dir: ""       # httpd.conf 所在目錄
+web_cert_cert_dir: "{{ web_cert_conf_dir }}"   # 憑證要放到主機上的目錄，預設同 web_cert_conf_dir
 web_cert_ssl_conf: ""       # 含 SSLCertificateFile 的設定檔完整路徑
+# 要換憑證的站（同一張憑證）：每站一個 SSL 設定檔與憑證目錄；server_name 用來以 SNI 確認送出的憑證
+web_cert_sites:
+  - ssl_conf: "{{ web_cert_ssl_conf }}"
+    cert_dir: "{{ web_cert_cert_dir }}"
 web_cert_include: ""        # 需要在 httpd.conf 啟用的 Include（例如 conf/extra/mg_ssl.conf）；空字串表示不需要
 web_cert_owner: root
 web_cert_group: "{{ web_cert_owner }}"
+web_cert_crt_mode: "0644"
+# false：主機上沿用來源檔名，直接覆蓋並改掉原設定行
+# true：檔名為 <prefix>.crt.<生效時間>.<指紋>，舊檔與舊設定行（註解）都保留
+web_cert_versioned: false
+web_cert_name_prefix: server
 web_cert_restart_cmd: ""
+web_cert_configtest_cmd: ""   # 重啟前檢查設定語法的指令（例如 httpd -t）；空字串表示不檢查
+# 大於 0 時，換完確認主機這個 port 送出的是新憑證；送出的不是新憑證也會重啟（多主機共用設定時需要）
+web_cert_verify_port: 0
+web_cert_openssl: openssl     # 主機上的 openssl，web_cert_verify_port 大於 0 時用

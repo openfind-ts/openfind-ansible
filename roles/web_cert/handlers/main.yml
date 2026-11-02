@@ -1,4 +1,12 @@
 ---
+# 先檢查設定語法，不通過就停，不會重啟成一台起不來的 httpd
+- name: Test web config
+  ansible.builtin.command:
+    cmd: "{{ web_cert_configtest_cmd }}"
+  changed_when: false
+  when: web_cert_configtest_cmd | length > 0
+  listen: Restart web service
+
 - name: Restart web service
   ansible.builtin.command:
     cmd: "{{ web_cert_restart_cmd }}"

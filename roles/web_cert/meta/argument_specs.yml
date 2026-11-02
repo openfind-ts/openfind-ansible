@@ -14,7 +14,10 @@ argument_specs:
       web_cert_conf_dir:
         type: str
         required: true
-        description: 主機上放憑證的目錄（httpd.conf 所在目錄）
+        description: httpd.conf 所在目錄
+      web_cert_cert_dir:
+        type: str
+        description: 主機上放憑證的目錄，預設同 web_cert_conf_dir
       web_cert_ssl_conf:
         type: str
         required: true
@@ -34,3 +37,28 @@ argument_specs:
         type: str
         required: true
         description: 重啟 Web 服務的指令
+      web_cert_configtest_cmd:
+        type: str
+        description: 重啟前檢查設定語法的指令，空字串表示不檢查
+      web_cert_chain_src:
+        type: str
+        description: control node 上的中繼憑證，空字串表示沒有
+      web_cert_sites:
+        type: list
+        elements: dict
+        description: 要換同一張憑證的站，每站 ssl_conf、cert_dir，選填 server_name（以 SNI 確認）
+      web_cert_crt_mode:
+        type: str
+        description: 憑證檔權限
+      web_cert_versioned:
+        type: bool
+        description: true 時檔名加上生效時間與指紋，舊檔與舊設定行（註解）保留
+      web_cert_name_prefix:
+        type: str
+        description: web_cert_versioned 為 true 時的檔名前綴
+      web_cert_verify_port:
+        type: int
+        description: 大於 0 時確認這個 port 送出的是新憑證，不是就重啟
+      web_cert_openssl:
+        type: str
+        description: 主機上的 openssl 指令

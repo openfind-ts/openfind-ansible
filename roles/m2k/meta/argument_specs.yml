@@ -29,6 +29,13 @@ argument_specs:
         type: str
         required: true
         description: 私鑰檔在 control node 上的路徑（須以 ansible-vault 加密）
+      m2k_chain_src:
+        type: str
+        description: 中繼憑證在 control node 上的路徑，空字串表示沒有
+      m2k_cert_vhosts:
+        type: list
+        elements: dict
+        description: 用同一張憑證的其他 vhost，每筆 ssl_conf、cert_dir、server_name
 
   check:
     short_description: Mail2000 健康檢查，只讀不改
