@@ -23,8 +23,12 @@
       - web_cert_include is not search('TODO')
       - web_cert_sites | map(attribute='ssl_conf') | select('search', 'TODO') | list | length == 0
       - web_cert_sites | map(attribute='cert_dir') | select('search', 'TODO') | list | length == 0
+      - web_cert_site_dirs | select('search', 'TODO') | list | length == 0
     fail_msg: "web_cert_include 或 web_cert_sites 仍有 TODO：Include 不需要就改成空字串"
     quiet: true
+  vars:
+    web_cert_site_dirs: "{{ web_cert_sites | map(attribute='key_dir', default='') | list
+      + web_cert_sites | map(attribute='chain_dir', default='') | list }}"
 
 # 檔名後綴由憑證本身決定（生效時間＋指紋），同一張憑證重跑不會再產生新檔
 - name: 讀取新憑證的生效時間與指紋
@@ -49,13 +53,21 @@
     fingerprint: "{{ web_cert_new_info.stdout | regex_search('Fingerprint=(.*)', '\\1', ignorecase=true) | first }}"
     suffix: "{{ (not_before | to_datetime('%b %d %H:%M:%S %Y GMT')).strftime('%Y%m%d_%H%M') ~ '.' ~ (fingerprint | replace(':', '') | lower)[:8] }}"
 
-- name: 整理要設定的 directive
+# dir：檔案放在站設定的哪個目錄（key_dir、chain_dir 沒寫就用 cert_dir）
+- name: 整理要設定的 directive 與各檔案在主機上的路徑
   ansible.builtin.set_fact:
     web_cert_directives:
-      - {directive: SSLCertificateFile, name: "{{ web_cert_crt_name }}"}
-      - {directive: SSLCertificateKeyFile, name: "{{ web_cert_key_name }}"}
-      # 沒給中繼憑證時：固定檔名模式不動原設定；保留歷史模式會把舊的 ChainFile 註解掉，避免指向別張憑證的 CA
-      - {directive: SSLCertificateChainFile, name: "{{ web_cert_chain_name }}"}
+      - {directive: SSLCertificateFile, name: "{{ web_cert_crt_name }}", dir: cert_dir}
+      - {directive: SSLCertificateKeyFile, name: "{{ web_cert_key_name }}", dir: key_dir}
+      # 沒給中繼憑證時：直接改行模式不動原設定；保留舊行模式會把舊的 ChainFile 註解掉，避免指向別張憑證的 CA
+      - {directive: SSLCertificateChainFile, name: "{{ web_cert_chain_name }}", dir: chain_dir}
+    web_cert_crt_dests: "{{ web_cert_sites | map(attribute='cert_dir') | unique | list }}"
+    web_cert_key_dests: >-
+      {{ web_cert_sites | map(attribute='key_dir', default='') | zip(web_cert_sites | map(attribute='cert_dir'))
+         | map('select') | map('first') | unique | list }}
+    web_cert_chain_dests: >-
+      {{ (web_cert_sites | map(attribute='chain_dir', default='') | zip(web_cert_sites | map(attribute='cert_dir'))
+          | map('select') | map('first') | unique | list) if web_cert_chain_name | length > 0 else [] }}
 
 # 憑證目錄與 httpd.conf 同一層時不動目錄權限
 - name: 建立憑證目錄
@@ -64,9 +76,10 @@
     state: directory
     owner: "{{ web_cert_owner }}"
     group: "{{ web_cert_group }}"
-    mode: "0700"
-  loop: "{{ web_cert_sites | map(attribute='cert_dir') | unique | reject('equalto', web_cert_conf_dir) | list }}"
+    mode: "{{ web_cert_dir_mode }}"
+  loop: "{{ (web_cert_crt_dests + web_cert_key_dests + web_cert_chain_dests) | unique | reject('equalto', web_cert_conf_dir) | list }}"
 
+# item.0：要上傳的檔案；item.1：主機上的目錄
 - name: 上傳憑證
   ansible.builtin.copy:
     src: "{{ item.0.src }}"
@@ -75,12 +88,11 @@
     group: "{{ web_cert_group }}"
     mode: "{{ web_cert_crt_mode }}"
     backup: "{{ not web_cert_versioned }}"
-  loop: "{{ crt_files | product(web_cert_sites | map(attribute='cert_dir') | unique) | list }}"
+  loop: >-
+    {{ [{'src': web_cert_crt_src, 'name': web_cert_crt_name}] | product(web_cert_crt_dests) | list
+       + [{'src': web_cert_chain_src, 'name': web_cert_chain_name}] | product(web_cert_chain_dests) | list }}
   loop_control:
     label: "{{ item.1 }}/{{ item.0.name }}"
-  vars:
-    crt_files: "{{ [{'src': web_cert_crt_src, 'name': web_cert_crt_name}]
-      + ([{'src': web_cert_chain_src, 'name': web_cert_chain_name}] if web_cert_chain_name | length > 0 else []) }}"
   notify: Restart web service
 
 - name: 上傳私鑰
@@ -91,7 +103,7 @@
     group: "{{ web_cert_group }}"
     mode: "0600"
     backup: "{{ not web_cert_versioned }}"
-  loop: "{{ web_cert_sites | map(attribute='cert_dir') | unique | list }}"
+  loop: "{{ web_cert_key_dests }}"
   diff: false   # 避免 --diff 印出私鑰內容
   notify: Restart web service
 
@@ -104,21 +116,21 @@
   when: web_cert_include | length > 0
   notify: Restart web service
 
-# 固定檔名：直接改掉原本那一行；只有註解範例時加在最後一行註解之後（留在原本的 VirtualHost 裡）
+# 直接改行：改掉原本那一行；只有註解範例時加在最後一行註解之後（留在原本的 VirtualHost 裡）
 - name: SSL 設定指向新憑證
   ansible.builtin.lineinfile:
     path: "{{ item.0.ssl_conf }}"
     regexp: '^\s*{{ item.1.directive }}\s'
     insertafter: '^\s*#\s*{{ item.1.directive }}\s'
-    line: '{{ item.1.directive }} "{{ item.0.cert_dir }}/{{ item.1.name }}"'
+    line: '{{ item.1.directive }} "{{ item.0[item.1.dir] | default(item.0.cert_dir, true) }}/{{ item.1.name }}"'
     backup: true
   loop: "{{ web_cert_sites | product(web_cert_directives | selectattr('name')) | list }}"
   loop_control:
     label: "{{ item.0.ssl_conf }}: {{ item.1.directive }}"
-  when: not web_cert_versioned
+  when: not web_cert_keep_old_lines | bool
   notify: Restart web service
 
-# 保留歷史（M2K 慣例）：原本生效的那行註解掉，新的一行加在同一組註解的最上面
+# 保留舊行（M2K 慣例）：原本生效的那行註解掉，新的一行加在同一組註解的最上面
 - name: 註解掉舊的憑證設定
   ansible.builtin.replace:
     path: "{{ item.0.ssl_conf }}"
@@ -129,8 +141,8 @@
   loop_control:
     label: "{{ item.0.ssl_conf }}: {{ item.1.directive }}"
   vars:
-    new_path: "{{ item.0.cert_dir }}/{{ item.1.name if item.1.name else '-' }}"
-  when: web_cert_versioned
+    new_path: "{{ item.0[item.1.dir] | default(item.0.cert_dir, true) }}/{{ item.1.name if item.1.name else '-' }}"
+  when: web_cert_keep_old_lines | bool
   notify: Restart web service
 
 - name: 加入新的憑證設定
@@ -144,8 +156,8 @@
   loop_control:
     label: "{{ item.0.ssl_conf }}: {{ item.1.directive }}"
   vars:
-    new_path: "{{ item.0.cert_dir }}/{{ item.1.name }}"
-  when: web_cert_versioned
+    new_path: "{{ item.0[item.1.dir] | default(item.0.cert_dir, true) }}/{{ item.1.name }}"
+  when: web_cert_keep_old_lines | bool
   notify: Restart web service
 
 # 不管設定檔有沒有變動，主機實際送出的不是新憑證就重啟：

@@ -13,15 +13,41 @@
     quiet: true
 
 
+# 憑證：看 mg_ssl.conf 實際生效的 SSLCertificateFile，以及 HTTPS（Include）有沒有開
+- name: 讀取 SSL 設定
+  ansible.builtin.slurp:
+    src: "{{ mg_ssl_conf }}"
+  register: mg_check_ssl_conf
+  failed_when: false
+
+- name: 找出生效的憑證檔
+  ansible.builtin.set_fact:
+    mg_check_cert_file: >-
+      {{ (mg_check_ssl_conf.content | default('') | b64decode)
+         | regex_search('(?m)^\s*SSLCertificateFile\s+"?([^"\s]+)"?', '\1') | default([''], true) | first }}
+
+- name: 讀取 httpd.conf
+  ansible.builtin.slurp:
+    src: "{{ mg_conf_dir }}/httpd.conf"
+  register: mg_check_httpd_conf
+
 - name: 讀取憑證到期日
   ansible.builtin.command:
-    cmd: "openssl x509 -enddate -noout -in {{ mg_conf_dir }}/{{ mg_cert_src | basename }}"
+    argv: [openssl, x509, -noout, -subject, -enddate, -in, "{{ mg_check_cert_file }}"]
   register: mg_cert_enddate
   changed_when: false
   check_mode: false
-  when: mg_cert_src | length > 0
+  failed_when: false
+  when: mg_check_cert_file | length > 0
 
-- name: 顯示憑證到期日
+- name: 顯示憑證
+  vars:
+    mg_check_https: >-
+      {{ (mg_check_httpd_conf.content | b64decode)
+         is search('(?m)^\s*Include\s+' ~ (mg_ssl_include | regex_escape) ~ '\s*$') }}
   ansible.builtin.debug:
-    msg: "{{ mg_cert_enddate.stdout }}"
-  when: mg_cert_enddate.stdout is defined
+    msg:
+      - "HTTPS：{{ '已開啟' if mg_check_https else '未開啟（新安裝預設；執行 renew_cert.yml 換憑證時會開啟）' }}"
+      - "設定的憑證：{{ mg_check_cert_file | default('', true) or '（mg_ssl.conf 沒有生效的 SSLCertificateFile）' }}"
+      - "{{ mg_cert_enddate.stdout_lines | default([]) | join('；') if mg_cert_enddate is not skipped and mg_cert_enddate.rc == 0
+           else '無法讀取憑證檔' if mg_cert_enddate is not skipped else '' }}"

@@ -18,6 +18,15 @@ argument_specs:
       web_cert_cert_dir:
         type: str
         description: 主機上放憑證的目錄，預設同 web_cert_conf_dir
+      web_cert_key_dir:
+        type: str
+        description: 主機上放私鑰的目錄，預設同 web_cert_cert_dir
+      web_cert_chain_dir:
+        type: str
+        description: 主機上放中繼憑證的目錄，預設同 web_cert_cert_dir
+      web_cert_dir_mode:
+        type: str
+        description: 建立憑證目錄時的權限
       web_cert_ssl_conf:
         type: str
         required: true
@@ -46,13 +55,16 @@ argument_specs:
       web_cert_sites:
         type: list
         elements: dict
-        description: 要換同一張憑證的站，每站 ssl_conf、cert_dir，選填 server_name（以 SNI 確認）
+        description: 要換同一張憑證的站，每站 ssl_conf、cert_dir，選填 key_dir、chain_dir、server_name（以 SNI 確認）
       web_cert_crt_mode:
         type: str
         description: 憑證檔權限
       web_cert_versioned:
         type: bool
         description: true 時檔名加上生效時間與指紋，舊檔與舊設定行（註解）保留
+      web_cert_keep_old_lines:
+        type: bool
+        description: true 時原本生效的設定行註解保留、新行放最上面；false 時直接改掉原本那一行。預設同 web_cert_versioned
       web_cert_name_prefix:
         type: str
         description: web_cert_versioned 為 true 時的檔名前綴

@@ -133,20 +133,20 @@ SSP 的換憑證方式與其他產品不同，尚未定義，所以 SSP 沒有 `
 | `weakscan` | 作業系統層弱掃項目（SSH 演算法、OpenSSL 等）；依 `cves/` 定義檔掃描 CVE（只讀） | 全部主機 |
 | `haproxy` | 產品前面以 docker 執行的 HAProxy：換憑證（`cert.yml`）、健康檢查（`check.yml`） | `haproxy` 群組的主機 |
 
-通用 role 不可寫死任何產品的路徑或指令，全部由產品 role 帶入。例如 MG 的 `tasks/cert.yml`：
+通用 role 不可寫死任何產品的路徑或指令，全部由產品 role 帶入。例如 MO 的 `tasks/cert.yml`：
 
 ```yaml
-- name: 更換 MailGates 憑證
+- name: 更換 MailAudit 憑證
   ansible.builtin.include_role:
     name: web_cert
   vars:
-    web_cert_crt_src: "{{ mg_cert_src }}"
-    web_cert_key_src: "{{ mg_key_src }}"
-    web_cert_conf_dir: "{{ mg_conf_dir }}"
-    web_cert_ssl_conf: "{{ mg_ssl_conf }}"
-    web_cert_include: "{{ mg_ssl_include }}"
-    web_cert_owner: "{{ mg_cert_owner }}"
-    web_cert_restart_cmd: "{{ mg_restart_cmd }}"
+    web_cert_crt_src: "{{ mo_cert_src }}"
+    web_cert_key_src: "{{ mo_key_src }}"
+    web_cert_conf_dir: "{{ mo_conf_dir }}"
+    web_cert_ssl_conf: "{{ mo_ssl_conf }}"
+    web_cert_include: "{{ mo_ssl_include }}"
+    web_cert_owner: "{{ mo_cert_owner }}"
+    web_cert_restart_cmd: "{{ mo_restart_cmd }}"
 ```
 
 新增一個產品要用的功能時，先確認其他產品是否也需要：兩個以上產品會用到，就做成通用 role。
@@ -380,7 +380,7 @@ argument_specs:
 | 產品 | 安裝路徑 | 執行帳號 | Web 重啟指令 | 使用 web_cert | SSL 設定檔 |
 | --- | --- | --- | --- | --- | --- |
 | M2K | `/webmail` | webmail | `/webmail/tools/m2kctrl httpd restart` | 是 | TODO |
-| MG | `/mailgates` | root | `/mailgates/httpd/bin/apachectl restart` | 是 | `conf/extra/mg_ssl.conf` |
+| MG | `/mailgates` | webmail | `su webmail -c '/mailgates/mg/bin/mg_ctl.pl -g restart httpd'` | 是 | `conf/extra/mg_ssl.conf` |
 | MO | `/mailgates` | root | `/mailgates/httpd/bin/apachectl restart` | 是 | `conf/extra/mg_ssl.conf` |
 | MB | `/webmail` | root | `/webmail/httpd/bin/apachectl restart` | 是 | TODO |
 | SSP | TODO | TODO | TODO | 否，換憑證方式不同 | — |

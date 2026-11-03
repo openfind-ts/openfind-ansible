@@ -3,3 +3,4 @@
 mg_version: "6.2"
 mg_cert_src: "{{ inventory_dir }}/files/mg.crt"
 mg_key_src: "{{ inventory_dir }}/files/mg.key"    # 先執行 ansible-vault encrypt files/mg.key
+mg_chain_src: "{{ inventory_dir }}/files/mg-ca.crt"   # 中繼憑證；沒有就刪掉這行

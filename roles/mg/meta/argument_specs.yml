@@ -25,6 +25,10 @@ argument_specs:
         type: str
         required: true
         description: 私鑰檔在 control node 上的路徑（須以 ansible-vault 加密）
+      mg_chain_src:
+        type: str
+        default: ""
+        description: 中繼憑證在 control node 上的路徑，空字串表示不動原本的 SSLCertificateChainFile
 
   check:
     short_description: MailGates 健康檢查，只讀不改

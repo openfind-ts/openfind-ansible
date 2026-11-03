@@ -90,8 +90,8 @@ ansible-playbook -i ../customer-inventories/customer-a playbooks/cve_check.yml -
 | 產品 | install | patch | cert（換憑證） | check |
 | --- | --- | --- | --- | --- |
 | M2K | TODO | 可用（目前只確認客製化客戶） | 可用：含中繼憑證、多站 vhost、重啟前 `httpd -t`、確認送出的憑證 | 可用 |
-| MG | TODO | TODO | 可用（基本：覆蓋憑證、改設定、重啟） | 可用 |
-| MO | TODO | 可用（標準版、客製版） | 可用（基本，同 MG） | 可用 |
+| MG | TODO | TODO | 可用：照 MG 管理介面慣例、含中繼憑證、開啟 HTTPS、重啟前 `apachectl -t`、確認送出的憑證 | 可用 |
+| MO | TODO | 可用（標準版、客製版） | 可用（基本：覆蓋憑證、改設定、重啟） | 可用 |
 | MB | TODO | TODO | 待補 SSL 設定檔路徑 | 可用 |
 | SSP | TODO | TODO | 換憑證方式不同，尚未定義 | 待補安裝路徑 |
 | HAProxy（docker） | — | — | 可用：容器內 `haproxy -c`、失敗自動還原、graceful reload | 可用 |

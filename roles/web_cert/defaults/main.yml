@@ -5,11 +5,17 @@ web_cert_key_src: ""        # control node 上的私鑰檔（ansible-vault 加�
 web_cert_chain_src: ""      # control node 上的中繼憑證；空字串表示沒有（或已接在憑證檔後面）
 web_cert_conf_dir: ""       # httpd.conf 所在目錄
 web_cert_cert_dir: "{{ web_cert_conf_dir }}"   # 憑證要放到主機上的目錄，預設同 web_cert_conf_dir
+web_cert_key_dir: "{{ web_cert_cert_dir }}"    # 私鑰放的目錄，預設同 web_cert_cert_dir
+web_cert_chain_dir: "{{ web_cert_cert_dir }}"  # 中繼憑證放的目錄，預設同 web_cert_cert_dir
+web_cert_dir_mode: "0700"   # 建立憑證目錄時的權限（已存在的目錄也會改成這個權限）
 web_cert_ssl_conf: ""       # 含 SSLCertificateFile 的設定檔完整路徑
 # 要換憑證的站（同一張憑證）：每站一個 SSL 設定檔與憑證目錄；server_name 用來以 SNI 確認送出的憑證
+# key_dir、chain_dir 選填，沒寫就跟 cert_dir 同一個目錄
 web_cert_sites:
   - ssl_conf: "{{ web_cert_ssl_conf }}"
     cert_dir: "{{ web_cert_cert_dir }}"
+    key_dir: "{{ web_cert_key_dir }}"
+    chain_dir: "{{ web_cert_chain_dir }}"
 web_cert_include: ""        # 需要在 httpd.conf 啟用的 Include（例如 conf/extra/mg_ssl.conf）；空字串表示不需要
 web_cert_owner: root
 web_cert_group: "{{ web_cert_owner }}"
@@ -17,6 +23,8 @@ web_cert_crt_mode: "0644"
 # false：主機上沿用來源檔名，直接覆蓋並改掉原設定行
 # true：檔名為 <prefix>.crt.<生效時間>.<指紋>，舊檔與舊設定行（註解）都保留
 web_cert_versioned: false
+# true：原本生效的設定行註解保留、新行放在最上面（M2K 慣例）；false：直接改掉原本那一行（MG 管理介面的做法）
+web_cert_keep_old_lines: "{{ web_cert_versioned }}"
 web_cert_name_prefix: server
 web_cert_restart_cmd: ""
 web_cert_configtest_cmd: ""   # 重啟前檢查設定語法的指令（例如 httpd -t）；空字串表示不檢查
