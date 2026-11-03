@@ -1,7 +1,8 @@
 # openfind-ansible
 
 Openfind 技術服務處的 Ansible 範本：五個產品（M2K、MG、MO、MB、SSP）、所有客戶共用同一套 roles 與 playbooks。
-客戶的主機、差異設定與加密過的密碼放在另一個 repo `customer-inventories`，執行時用 `-i` 指定客戶。
+客戶的主機、差異設定與加密過的密碼放在客戶 inventory，執行時用 `-i` 指定客戶。
+公開的 `customer-inventories` 只放範例；真實客戶另建私有 repo，照同樣結構放（見規範第 3 章）。
 
 設計規則見 [`docs/ansible-template-spec.md`](docs/ansible-template-spec.md)；給 AI 的規則在 [`CLAUDE.md`](CLAUDE.md)，
 Claude Code 在這個目錄啟動時會自動讀取。
@@ -86,16 +87,20 @@ ansible-playbook -i ../customer-inventories/customer-a playbooks/cve_check.yml -
 
 ## 各產品目前狀態
 
-| 產品 | install / patch | cert（換憑證） | check |
-| --- | --- | --- | --- |
-| M2K | TODO | 待補 SSL 設定檔路徑 | 可用 |
-| MG | TODO | 可用 | 可用 |
-| MO | TODO | 可用 | 可用 |
-| MB | TODO | 待補 SSL 設定檔路徑 | 可用 |
-| SSP | TODO | 換憑證方式不同，尚未定義 | 待補安裝路徑 |
+| 產品 | install | patch | cert（換憑證） | check |
+| --- | --- | --- | --- | --- |
+| M2K | TODO | 可用（目前只確認客製化客戶） | 可用：含中繼憑證、多站 vhost、重啟前 `httpd -t`、確認送出的憑證 | 可用 |
+| MG | TODO | TODO | 可用（基本：覆蓋憑證、改設定、重啟） | 可用 |
+| MO | TODO | 可用（標準版、客製版） | 可用（基本，同 MG） | 可用 |
+| MB | TODO | TODO | 待補 SSL 設定檔路徑 | 可用 |
+| SSP | TODO | TODO | 換憑證方式不同，尚未定義 | 待補安裝路徑 |
+| HAProxy（docker） | — | — | 可用：容器內 `haproxy -c`、失敗自動還原、graceful reload | 可用 |
 
-產品前面以 docker 執行的 HAProxy 放 inventory 的 `haproxy` 群組，用通用 role `haproxy`：
-`renew_cert.yml` 換憑證（graceful reload）、`healthcheck.yml` 檢查，見 [`roles/haproxy/README.md`](roles/haproxy/README.md)。
+各 role 的細節見 `roles/<名稱>/README.md`。
+
+產品前面以 docker 執行的 HAProxy 不是產品，放 inventory 的 `haproxy` 群組，用通用 role `haproxy`：
+`renew_cert.yml` 換憑證、`healthcheck.yml` 檢查，見 [`roles/haproxy/README.md`](roles/haproxy/README.md)。
+`renew_cert.yml` 含所有產品的 play，只換 HAProxy 時要加 `--limit haproxy`。
 
 `defaults/main.yml` 裡值為 `"TODO"` 的項目，用到時 role 會直接停下來報錯，不會帶著錯誤的值修改主機。
 
