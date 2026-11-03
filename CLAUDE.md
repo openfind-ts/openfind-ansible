@@ -4,7 +4,7 @@
 
 ## 結構
 - 產品 role 只有五個：m2k、mg、mo、mb、ssp。不可新增 mg_install、mg_patch 這類依工作拆分的 role。
-- 產品 role 的 task 檔只用這些名稱：install.yml、patch.yml、cert.yml、weakscan.yml、check.yml。該產品沒有的工作就不建那個檔，不可自創別的名稱。
+- 產品 role 的 task 檔只用這些名稱：install.yml、patch.yml、cert.yml、weakscan.yml、check.yml、shutdown.yml。該產品沒有的工作就不建那個檔，不可自創別的名稱。
 - 兩個以上產品共用的功能放通用 role（os_baseline、web_cert、weakscan），通用 role 不可寫死產品路徑。
 - playbook 依工作命名，每個產品一個 play，用 include_role + tasks_from 呼叫產品 role。
 - 會中斷服務的 play 必須有 serial 與 max_fail_percentage: 0。

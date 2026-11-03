@@ -1,0 +1,72 @@
+---
+# 維護關機：停止產品服務後關機（shutdown -h）。關機後要人到現場或從虛擬化平台開機
+# 依郵件流向由外而內：MG → MO → M2K → MB。只關部分主機請加 --limit
+# 執行前會列出主機要求輸入 yes；不想互動可加 -e shutdown_confirm=yes
+- name: 確認要關機的主機
+  hosts: mg:mo:m2k:mb
+  gather_facts: false
+  any_errors_fatal: true   # 沒確認就整個 playbook 停下，後面的 play 都不跑
+  tasks:
+    - name: 輸入 yes 確認關機
+      ansible.builtin.pause:
+        prompt: "以下主機會停止服務並關機：{{ ansible_play_hosts_all | join('、') }}。確定請輸入 yes"
+      register: shutdown_prompt
+      run_once: true
+      when:
+        - not ansible_check_mode
+        - shutdown_confirm | default('') != 'yes'
+
+    - name: 未確認就停止
+      ansible.builtin.assert:
+        that: shutdown_confirm | default('') == 'yes' or shutdown_prompt is skipped or shutdown_prompt.user_input == 'yes'
+        fail_msg: 沒有輸入 yes，不關機
+        quiet: true
+      run_once: true
+
+- name: 關閉 MG
+  hosts: mg
+  become: true
+  gather_facts: false
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 停止 MG 服務並關機
+      ansible.builtin.include_role:
+        name: mg
+        tasks_from: shutdown
+
+- name: 關閉 MO
+  hosts: mo
+  become: true
+  gather_facts: false
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 停止 MO 服務並關機
+      ansible.builtin.include_role:
+        name: mo
+        tasks_from: shutdown
+
+- name: 關閉 M2K
+  hosts: m2k
+  become: true
+  gather_facts: false
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 停止 M2K 服務並關機
+      ansible.builtin.include_role:
+        name: m2k
+        tasks_from: shutdown
+
+- name: 關閉 MB
+  hosts: mb
+  become: true
+  gather_facts: false
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 停止 MB 服務並關機
+      ansible.builtin.include_role:
+        name: mb
+        tasks_from: shutdown

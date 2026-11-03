@@ -64,6 +64,7 @@ openfind-ansible/
 │   ├── renew_cert.yml
 │   ├── weakscan_fix.yml
 │   ├── healthcheck.yml
+│   ├── shutdown.yml
 │   └── os_baseline.yml
 ├── inventories/
 │   └── _template/          # 客戶 inventory 範本，只放假資料
@@ -106,7 +107,8 @@ roles/mg/
 │   ├── patch.yml           # 更新到指定版本
 │   ├── cert.yml            # 換憑證（呼叫 web_cert）
 │   ├── weakscan.yml        # 產品層的弱掃修補
-│   └── check.yml           # 健康檢查，只讀不改
+│   ├── check.yml           # 健康檢查，只讀不改
+│   └── shutdown.yml        # 維護關機：停服務後關機
 ├── handlers/main.yml       # 重啟產品服務
 ├── templates/
 └── files/
@@ -119,6 +121,7 @@ roles/mg/
 | `cert.yml` | 換憑證 | 不自己寫換憑證邏輯，呼叫 `web_cert` |
 | `weakscan.yml` | 產品自身的弱掃項目 | 作業系統層的項目放 `weakscan` 通用 role |
 | `check.yml` | 服務、版本、憑證到期日檢查 | 只讀不改，任何時候都能安全執行 |
+| `shutdown.yml` | 維護關機 | 用產品官方控制腳本停服務，再呼叫 `os_baseline` 的 `shutdown` 關機 |
 
 重啟服務一律寫成 handler，由 task 用 `notify` 觸發；不可用一個獨立 task 每次都重啟。
 
@@ -128,7 +131,7 @@ SSP 的換憑證方式與其他產品不同，尚未定義，所以 SSP 沒有 `
 
 | role | 負責 | 使用產品 |
 | --- | --- | --- |
-| `os_baseline` | NTP、sshd 設定、管理帳號、作業系統更新 | 全部主機 |
+| `os_baseline` | NTP、sshd 設定、管理帳號、作業系統更新、關機（`shutdown`） | 全部主機 |
 | `web_cert` | 上傳憑證、修改 Apache SSL 設定、觸發重啟 | M2K、MG、MO、MB |
 | `weakscan` | 作業系統層弱掃項目（SSH 演算法、OpenSSL 等）；依 `cves/` 定義檔掃描 CVE（只讀） | 全部主機 |
 | `haproxy` | 產品前面以 docker 執行的 HAProxy：換憑證（`cert.yml`）、健康檢查（`check.yml`） | `haproxy` 群組的主機 |

@@ -1,0 +1,20 @@
+---
+# 關機（shutdown -h）。由產品 role 的 shutdown.yml 在停完產品服務後呼叫
+# 延遲幾秒再關，讓 ansible 先收到回應；預演（--check）時不會關機
+- name: 關機
+  ansible.builtin.shell: "sleep {{ os_baseline_shutdown_delay }} && /sbin/shutdown -h now"
+  async: "{{ os_baseline_shutdown_delay | int + 30 }}"
+  poll: 0
+  changed_when: true
+  when: not ansible_check_mode
+
+- name: 等主機停止回應
+  ansible.builtin.wait_for:
+    host: "{{ ansible_host | default(inventory_hostname) }}"
+    port: "{{ ansible_port | default(22) }}"
+    state: stopped
+    delay: "{{ os_baseline_shutdown_delay }}"
+    timeout: "{{ os_baseline_shutdown_timeout }}"
+  delegate_to: localhost
+  become: false
+  when: not ansible_check_mode

@@ -33,3 +33,6 @@ argument_specs:
   check:
     short_description: MailAudit 健康檢查，只讀不改
     options: {}
+  shutdown:
+    short_description: 維護關機：停止 MailAudit 服務後關機
+    options: {}

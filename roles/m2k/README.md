@@ -1,6 +1,6 @@
 # m2k：Mail2000
 
-Mail2000 的產品 role。依規範第 4.1 節，工作拆成 task 檔：install.yml、patch.yml、cert.yml、check.yml。
+Mail2000 的產品 role。依規範第 4.1 節，工作拆成 task 檔：install.yml、patch.yml、cert.yml、check.yml、shutdown.yml。
 playbook 用 `include_role` + `tasks_from` 指定要跑哪個檔。
 
 ## 目前狀態
@@ -9,6 +9,7 @@ playbook 用 `include_role` + `tasks_from` 指定要跑哪個檔。
 - `patch.yml`：可用，目前只確認客製化客戶適用。依序安裝 `m2k_patch_dir` 裡比主機目前版本新的 patch，裝到最新；已是最新就跳過。目前版本看各台的安裝紀錄 `m2k_patch_record_file`（m2kpatch.info），多主機共用 `/webmail/etc` 時要把它 link 到各台本機。任一個 patch 失敗就停，服務維持停止，由人確認後再處理。installer 以非同步執行，上限 `m2k_patch_timeout` 秒。
 - `cert.yml`：可用，呼叫 `web_cert`。照 M2K 現場慣例：憑證、私鑰、中繼憑證上傳到 `/webmail/httpd/conf/ssl/`，檔名 `m2k_server.crt|key.<生效時間>.<指紋>`、`m2k_server-ca.crt.<…>`（同一張憑證重跑不會再產生新檔）；`extra/m2k_ssl.conf` 原本生效的設定行註解掉，新的一行放在最上面。`m2k_cert_vhosts` 列出的其他網域 vhost 一起換。新安裝的主機 `httpd.conf` 沒有啟用 `m2k_ssl.conf`，跑完會開始聽 443。重啟前先跑 `httpd -t`，語法錯就停；換完確認 443（vhost 用 SNI）送出的是新憑證，不是就重啟，多主機共用 NAS 上的設定時第二台也會重啟。ACME 自動續約的站不適用。
 - `check.yml`：可用，只讀不改。版本從 `m2k_version_file`（`system_version.info` 第一欄）讀取，目前只確認客製化客戶適用。客戶 inventory 設 `m2k_check_patch_record: true` 時，另外顯示這台 `m2kpatch.info` 的最新一筆（多主機共用 etc 時用）。
+- `shutdown.yml`：可用。以 webmail 執行 `m2kctrl -s all -c stop` 停服務，再呼叫 `os_baseline` 的 `shutdown` 關機；由 `playbooks/shutdown.yml` 執行。
 - `weakscan.yml`：產品層弱掃項目尚未定義，所以還沒建這個檔。
 
 ## 標準值

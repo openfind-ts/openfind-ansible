@@ -20,3 +20,14 @@ argument_specs:
         type: bool
         default: false
         description: 更新後是否重開機
+  shutdown:
+    short_description: 關機（shutdown -h），等到 SSH 停止回應
+    options:
+      os_baseline_shutdown_delay:
+        type: int
+        default: 3
+        description: 送出關機指令後延遲幾秒才關
+      os_baseline_shutdown_timeout:
+        type: int
+        default: 300
+        description: 等 SSH 埠停止回應的最長秒數

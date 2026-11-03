@@ -4,6 +4,11 @@ mb_install_dir: /webmail
 mb_conf_dir: "{{ mb_install_dir }}/httpd/conf"
 mb_run_user: root
 mb_restart_cmd: /webmail/httpd/bin/apachectl restart
+# 官方控制腳本，須以 webmail 執行
+mb_ctl_user: webmail
+mb_ctl_cmd: "{{ mb_install_dir }}/mbase/bin/mbase.pl"
+# shutdown.yml：維護關機前停止所有服務
+mb_stop_cmd: "su {{ mb_ctl_user }} -c '{{ mb_ctl_cmd }} stop'"
 
 # 換憑證（cert.yml → web_cert）
 mb_ssl_conf: "TODO"  # TODO: 確認 MB 的 SSL 設定檔路徑

@@ -20,7 +20,7 @@ openfind-ansible/
 │   ├── os_baseline/          # 通用：NTP、系統更新
 │   ├── weakscan/             # 通用：作業系統層弱掃（sshd 演算法）、CVE 掃描
 │   └── haproxy/              # 通用：以 docker 執行的 HAProxy（換憑證、檢查）
-├── playbooks/                # 依工作分：install、patch、renew_cert、healthcheck、weakscan_fix、os_baseline、cve_check
+├── playbooks/                # 依工作分：install、patch、renew_cert、healthcheck、weakscan_fix、os_baseline、cve_check、shutdown
 ├── cves/                     # CVE 定義檔，一個 CVE 一個檔
 ├── inventories/_template/    # 客戶 inventory 範本，只有假資料
 └── .github/workflows/        # CI：ansible-lint 與 syntax-check
@@ -65,6 +65,18 @@ ansible-playbook -i ../customer-inventories/customer-a playbooks/renew_cert.yml 
 --limit 'mg:&staging'
 ```
 
+## 維護關機
+
+`shutdown.yml` 用各產品的官方控制腳本停服務後關機（`shutdown -h`），順序 MG → MO → M2K → MB。執行前會列出主機要求輸入 `yes`。
+
+```bash
+# 預演：不會停服務也不會關機
+ansible-playbook -i ../customer-inventories/customer-a playbooks/shutdown.yml --limit mg --check
+ansible-playbook -i ../customer-inventories/customer-a playbooks/shutdown.yml --limit mg
+```
+
+關機後要從虛擬化平台或現場開機，開機後服務是否自動啟動依各主機設定。
+
 ## CVE 掃描
 
 收到 CVE 通報時，用 `cves/` 裡的定義檔掃描所有產品主機，只讀不改：
@@ -87,14 +99,14 @@ ansible-playbook -i ../customer-inventories/customer-a playbooks/cve_check.yml -
 
 ## 各產品目前狀態
 
-| 產品 | install | patch | cert（換憑證） | check |
-| --- | --- | --- | --- | --- |
-| M2K | TODO | 可用（目前只確認客製化客戶） | 可用：含中繼憑證、多站 vhost、重啟前 `httpd -t`、確認送出的憑證 | 可用 |
-| MG | TODO | TODO | 可用：照 MG 管理介面慣例、含中繼憑證、開啟 HTTPS、重啟前 `apachectl -t`、確認送出的憑證 | 可用 |
-| MO | TODO | 可用（標準版、客製版） | 可用（基本：覆蓋憑證、改設定、重啟） | 可用 |
-| MB | TODO | TODO | 待補 SSL 設定檔路徑 | 可用 |
-| SSP | TODO | TODO | 換憑證方式不同，尚未定義 | 待補安裝路徑 |
-| HAProxy（docker） | — | — | 可用：容器內 `haproxy -c`、失敗自動還原、graceful reload | 可用 |
+| 產品 | install | patch | cert（換憑證） | check | shutdown |
+| --- | --- | --- | --- | --- | --- |
+| M2K | TODO | 可用（目前只確認客製化客戶） | 可用：含中繼憑證、多站 vhost、重啟前 `httpd -t`、確認送出的憑證 | 可用 | 可用 |
+| MG | TODO | TODO | 可用：照 MG 管理介面慣例、含中繼憑證、開啟 HTTPS、重啟前 `apachectl -t`、確認送出的憑證 | 可用 | 可用 |
+| MO | TODO | 可用（標準版、客製版） | 可用（基本：覆蓋憑證、改設定、重啟） | 可用 | 可用 |
+| MB | TODO | TODO | 待補 SSL 設定檔路徑 | 可用 | 可用 |
+| SSP | TODO | TODO | 換憑證方式不同，尚未定義 | 待補安裝路徑 | — |
+| HAProxy（docker） | — | — | 可用：容器內 `haproxy -c`、失敗自動還原、graceful reload | 可用 | — |
 
 各 role 的細節見 `roles/<名稱>/README.md`。
 

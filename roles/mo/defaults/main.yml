@@ -4,6 +4,11 @@ mo_install_dir: /mailgates
 mo_conf_dir: "{{ mo_install_dir }}/httpd/conf"
 mo_run_user: root
 mo_restart_cmd: /mailgates/httpd/bin/apachectl restart
+# 官方控制腳本（同 MG），須以 webmail 執行
+mo_ctl_user: webmail
+mo_ctl_cmd: "{{ mo_install_dir }}/mg/bin/mg_ctl.pl"
+# shutdown.yml：維護關機前停止服務。mg_ctl.pl 的 all 不含 httpd，httpd 由關機時的系統停掉
+mo_stop_cmd: "su {{ mo_ctl_user }} -c '{{ mo_ctl_cmd }} stop all'"
 
 # 換憑證（cert.yml → web_cert）
 mo_ssl_conf: "{{ mo_conf_dir }}/extra/mg_ssl.conf"

@@ -1,6 +1,6 @@
 # mg：MailGates
 
-MailGates 的產品 role。依規範第 4.1 節，工作拆成 task 檔：install.yml、patch.yml、cert.yml、check.yml。
+MailGates 的產品 role。依規範第 4.1 節，工作拆成 task 檔：install.yml、patch.yml、cert.yml、check.yml、shutdown.yml。
 playbook 用 `include_role` + `tasks_from` 指定要跑哪個檔。
 
 ## 目前狀態
@@ -11,6 +11,7 @@ playbook 用 `include_role` + `tasks_from` 指定要跑哪個檔。
   - 重啟前先跑 `apachectl -t`，語法錯就停；以 webmail 執行 `mg_ctl.pl -g restart httpd`（graceful），不可用 root 執行 apachectl，否則 httpd 會改以 root 執行。
   - 換完確認 443 送出的是新憑證，不是就重啟、重啟後仍不是就停。
 - `check.yml`：可用，只讀不改。顯示 HTTPS 是否開啟，以及 `mg_ssl.conf` 實際生效的憑證的主旨與到期日。
+- `shutdown.yml`：可用。以 webmail 執行 `mg_ctl.pl stop all`（不含 httpd，由關機時的系統停掉） 停服務，再呼叫 `os_baseline` 的 `shutdown` 關機；由 `playbooks/shutdown.yml` 執行。
 - `weakscan.yml`：產品層弱掃項目尚未定義，所以還沒建這個檔。
 
 ## 標準值

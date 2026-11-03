@@ -1,6 +1,6 @@
 # mo：MailAudit
 
-MailAudit 的產品 role。依規範第 4.1 節，工作拆成 task 檔：install.yml、patch.yml、cert.yml、check.yml。
+MailAudit 的產品 role。依規範第 4.1 節，工作拆成 task 檔：install.yml、patch.yml、cert.yml、check.yml、shutdown.yml。
 playbook 用 `include_role` + `tasks_from` 指定要跑哪個檔。
 
 ## 目前狀態
@@ -12,6 +12,7 @@ playbook 用 `include_role` + `tasks_from` 指定要跑哪個檔。
   - `--check` 只顯示安裝計畫。
 - `cert.yml`：可用，呼叫 `web_cert`。
 - `check.yml`：可用，只讀不改。
+- `shutdown.yml`：可用。以 webmail 執行 `mg_ctl.pl stop all`（同 MG，不含 httpd，由關機時的系統停掉）停服務，再呼叫 `os_baseline` 的 `shutdown` 關機；由 `playbooks/shutdown.yml` 執行。
 - `weakscan.yml`：產品層弱掃項目尚未定義，所以還沒建這個檔。
 
 ## 標準值

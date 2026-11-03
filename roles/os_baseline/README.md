@@ -4,6 +4,7 @@
 | --- | --- | --- |
 | NTP（chrony） | 可用 | `os_baseline_ntp_servers` 有值才執行 |
 | 系統更新（dnf） | 可用 | `os_baseline_update: true` 才執行；預設只裝安全性更新 |
+| 關機（`tasks_from: shutdown`） | 可用 | 由產品 role 的 `shutdown.yml` 停完服務後呼叫 |
 | sshd 設定、管理帳號 | TODO | |
 
 - `chrony.conf` 由 template 整份產生，修改前會備份。

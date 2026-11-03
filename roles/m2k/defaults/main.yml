@@ -38,6 +38,9 @@ m2k_patch_tmp_dir: /tmp   # 主機上解開 patch 的位置，裝完不清，交
 m2k_patch_timeout: 3600    # 所有 patch 的 installer 合計最長秒數，超過會被終止；實測兩個 patch 約 3–4 分鐘
 m2k_ctrl_cmd: "{{ m2k_install_dir }}/tools/m2kctrl"   # 以 m2k_run_user 執行：-s all -c stop|start|status
 
+# shutdown.yml：維護關機前停止所有服務
+m2k_stop_cmd: "su {{ m2k_run_user }} -c '{{ m2k_ctrl_cmd }} -s all -c stop'"
+
 # 這個產品內含的元件，CVE 掃描（playbooks/cve_check.yml）只掃有列出的元件
 m2k_components: [php]
 # 各元件的實際位置；有寫就只搜這些目錄，沒寫才搜整個安裝目錄

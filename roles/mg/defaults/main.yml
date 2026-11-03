@@ -7,6 +7,8 @@ mg_run_user: webmail   # httpd 以 webmail 執行（httpd 有 cap_net_bind_servi
 mg_ctl_cmd: "{{ mg_install_dir }}/mg/bin/mg_ctl.pl"
 mg_restart_cmd: "su {{ mg_run_user }} -c '{{ mg_ctl_cmd }} -g restart httpd'"
 mg_configtest_cmd: "su {{ mg_run_user }} -c '{{ mg_install_dir }}/httpd/bin/apachectl -t'"
+# shutdown.yml：維護關機前停止服務。mg_ctl.pl 的 all 不含 httpd，httpd 由關機時的系統停掉
+mg_stop_cmd: "su {{ mg_run_user }} -c '{{ mg_ctl_cmd }} stop all'"
 
 # 換憑證（cert.yml → web_cert），照 MG 管理介面（mg_adm）的做法：
 #   憑證 ssl.crt/server.crt.<後綴>、私鑰 ssl.key/server.key.<後綴>、中繼憑證 conf/server-ca.crt.<後綴>，權限 0600

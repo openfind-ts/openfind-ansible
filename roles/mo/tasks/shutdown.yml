@@ -1,0 +1,18 @@
+---
+# 維護關機：用官方控制腳本停止 MailAudit 服務，再關機（os_baseline 的 shutdown）
+# 預演（--check）時只列出會做的事，不會停服務也不會關機
+- name: 停止 MailAudit 服務
+  ansible.builtin.command:
+    cmd: "{{ mo_stop_cmd }}"
+  register: mo_stop
+  changed_when: true
+
+- name: 顯示停止結果
+  ansible.builtin.debug:
+    var: mo_stop.stdout_lines
+  when: mo_stop is not skipped
+
+- name: 關機
+  ansible.builtin.include_role:
+    name: os_baseline
+    tasks_from: shutdown
