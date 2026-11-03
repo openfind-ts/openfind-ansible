@@ -33,9 +33,16 @@ sudo dnf install -y python3.12 python3.12-pip
 python3.12 -m venv ~/ansible-venv && source ~/ansible-venv/bin/activate
 pip install ansible-core ansible-lint
 
-# 兩個 repo 放在同一層
-git clone https://github.com/openfind-ts/openfind-ansible.git
+# 預設安裝在 /opt/openfind/，兩個 repo 放在同一層
+sudo mkdir -p /opt/openfind && cd /opt/openfind
+git clone https://github.com/openfind-ts/openfind-ansible.git ansible
 git clone <customer-inventories 的網址> customer-inventories
+```
+
+```text
+/opt/openfind/
+├── ansible/                 # 這個 repo（openfind-ansible）
+└── customer-inventories/    # 客戶 inventory，執行時用 -i ../customer-inventories/<客戶>
 ```
 
 ## 執行
@@ -43,7 +50,7 @@ git clone <customer-inventories 的網址> customer-inventories
 一律在 repo 根目錄執行，先預演、讀過 diff，再正式執行。
 
 ```bash
-cd openfind-ansible
+cd /opt/openfind/ansible
 
 # 預演：只跑客戶 A 的 MG 換憑證
 ansible-playbook -i ../customer-inventories/customer-a playbooks/renew_cert.yml \

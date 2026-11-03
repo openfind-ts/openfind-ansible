@@ -144,7 +144,8 @@
     - name: 停止
       ansible.builtin.fail:
         msg: >-
-          換憑證失敗：{{ ansible_failed_task.name }}（{{ ansible_failed_result.stderr | default(ansible_failed_result.msg) | default('') }}）。
+          換憑證失敗：{{ ansible_failed_task.name }}（{{ [ansible_failed_result.stdout | default(''), ansible_failed_result.stderr | default('')]
+             | select | join(' ') | default(ansible_failed_result.msg | default(''), true) }}）。
           {{ '主機上的 pem 已還原為 ' ~ haproxy_backup_path if haproxy_pem_restore is changed
              else '主機上的 pem 沒有被換掉' if haproxy_pem_put is not defined or haproxy_pem_put is not changed
              else '主機上原本沒有 pem，新 pem 留在原處' }}，HAProxy 沒有 reload
