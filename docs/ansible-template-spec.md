@@ -52,6 +52,7 @@ openfind-ansible/
 │   ├── os_baseline/        # 通用：NTP、sshd、帳號、系統更新
 │   ├── web_cert/           # 通用：Apache 換憑證
 │   ├── weakscan/           # 通用：弱掃修補項目
+│   ├── haproxy/            # 通用：以 docker 執行的 HAProxy（換憑證、檢查）
 │   ├── m2k/                # 產品 role
 │   ├── mg/
 │   ├── mo/
@@ -130,6 +131,7 @@ SSP 的換憑證方式與其他產品不同，尚未定義，所以 SSP 沒有 `
 | `os_baseline` | NTP、sshd 設定、管理帳號、作業系統更新 | 全部主機 |
 | `web_cert` | 上傳憑證、修改 Apache SSL 設定、觸發重啟 | M2K、MG、MO、MB |
 | `weakscan` | 作業系統層弱掃項目（SSH 演算法、OpenSSL 等）；依 `cves/` 定義檔掃描 CVE（只讀） | 全部主機 |
+| `haproxy` | 產品前面以 docker 執行的 HAProxy：換憑證（`cert.yml`）、健康檢查（`check.yml`） | `haproxy` 群組的主機 |
 
 通用 role 不可寫死任何產品的路徑或指令，全部由產品 role 帶入。例如 MG 的 `tasks/cert.yml`：
 
@@ -235,6 +237,7 @@ customer-a/
 | --- | --- | --- |
 | 產品 | `m2k`、`mg`、`mo`、`mb`、`ssp` | 與 role 名稱相同，不可自訂別名 |
 | 環境 | `prod`、`staging`、`dr` | 依客戶實際有的環境建立 |
+| 周邊 | `haproxy` | 產品前面以 docker 執行的 HAProxy，用通用 role `haproxy`；主機名稱 `haproxy01`、`haproxy02` |
 
 ```yaml
 # hosts.yml

@@ -1,0 +1,125 @@
+---
+argument_specs:
+  main:
+    short_description: 健康檢查（同 check）
+    options:
+      haproxy_container:
+        type: str
+        default: haproxy
+        description: docker-compose.yml 的 container_name
+      haproxy_docker:
+        type: str
+        default: docker
+        description: 主機上的 docker 指令
+      haproxy_cfg_in_container:
+        type: str
+        default: /usr/local/etc/haproxy/haproxy.cfg
+        description: 容器內的 haproxy.cfg 路徑
+      haproxy_verify_port:
+        type: int
+        default: 443
+        description: 大於 0 時從主機這個 port 讀取送出的憑證
+      haproxy_verify_server_name:
+        type: str
+        default: ""
+        description: 讀取憑證時帶的 SNI，空字串表示不帶
+      haproxy_openssl:
+        type: str
+        default: openssl
+        description: 主機上的 openssl 指令
+  check:
+    short_description: 容器狀態、版本、設定檢查、送出憑證的到期日，只讀不改
+    options:
+      haproxy_container:
+        type: str
+        default: haproxy
+        description: docker-compose.yml 的 container_name
+      haproxy_docker:
+        type: str
+        default: docker
+        description: 主機上的 docker 指令
+      haproxy_cfg_in_container:
+        type: str
+        default: /usr/local/etc/haproxy/haproxy.cfg
+        description: 容器內的 haproxy.cfg 路徑
+      haproxy_verify_port:
+        type: int
+        default: 443
+        description: 大於 0 時從主機這個 port 讀取送出的憑證
+      haproxy_verify_server_name:
+        type: str
+        default: ""
+        description: 讀取憑證時帶的 SNI，空字串表示不帶
+      haproxy_openssl:
+        type: str
+        default: openssl
+        description: 主機上的 openssl 指令
+  cert:
+    short_description: 組出 pem（憑證 + 中繼憑證 + 私鑰）放到掛載目錄，檢查設定後 graceful reload
+    options:
+      haproxy_compose_dir:
+        type: str
+        required: true
+        description: 主機上 docker-compose.yml 所在目錄
+      haproxy_cert_dir:
+        type: str
+        description: 主機上掛進容器的憑證目錄，預設 <haproxy_compose_dir>/certs
+      haproxy_pem_name:
+        type: str
+        default: server.pem
+        description: haproxy.cfg 的 bind ... crt 指到的檔名
+      haproxy_backup_dir:
+        type: str
+        description: 舊 pem 的備份目錄，預設 <haproxy_compose_dir>/cert-backup
+      haproxy_cert_src:
+        type: str
+        required: true
+        description: control node 上的伺服器憑證
+      haproxy_key_src:
+        type: str
+        required: true
+        description: control node 上的私鑰（ansible-vault 加密）
+      haproxy_chain_src:
+        type: str
+        default: ""
+        description: control node 上的中繼憑證，空字串表示沒有
+      haproxy_pem_owner:
+        type: str
+        default: root
+        description: pem 擁有者
+      haproxy_pem_group:
+        type: str
+        default: root
+        description: pem 群組
+      haproxy_pem_mode:
+        type: str
+        default: "0644"
+        description: pem 權限；容器內以非 root 讀取，要讓它讀得到
+      haproxy_reload_signal:
+        type: str
+        default: HUP
+        description: reload 時送給容器的 signal
+      haproxy_container:
+        type: str
+        default: haproxy
+        description: docker-compose.yml 的 container_name
+      haproxy_docker:
+        type: str
+        default: docker
+        description: 主機上的 docker 指令
+      haproxy_cfg_in_container:
+        type: str
+        default: /usr/local/etc/haproxy/haproxy.cfg
+        description: 容器內的 haproxy.cfg 路徑
+      haproxy_verify_port:
+        type: int
+        default: 443
+        description: 大於 0 時從主機這個 port 讀取送出的憑證
+      haproxy_verify_server_name:
+        type: str
+        default: ""
+        description: 讀取憑證時帶的 SNI，空字串表示不帶
+      haproxy_openssl:
+        type: str
+        default: openssl
+        description: 主機上的 openssl 指令

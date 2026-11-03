@@ -1,0 +1,79 @@
+---
+# 健康檢查：只讀不改，任何時候都能安全執行
+- name: 確認 haproxy_container 已設定
+  ansible.builtin.assert:
+    that:
+      - haproxy_container | length > 0
+      - haproxy_container is not search('TODO')
+    fail_msg: haproxy_container 尚未設定
+    quiet: true
+
+- name: 讀取容器狀態
+  ansible.builtin.command:
+    argv: ["{{ haproxy_docker }}", inspect, "{{ haproxy_container }}"]
+  register: haproxy_inspect
+  changed_when: false
+  check_mode: false
+  failed_when: false
+
+- name: 確認容器正在執行
+  ansible.builtin.assert:
+    that:
+      - haproxy_inspect.rc == 0
+      - haproxy_state.Status == 'running'
+    fail_msg: "容器 {{ haproxy_container }} 不存在或沒有在執行：{{ haproxy_inspect.stderr | default('') }}{{ haproxy_state.Status | default('') }}"
+    success_msg: "容器 {{ haproxy_container }} 執行中，image {{ haproxy_info.Config.Image }}，啟動於 {{ haproxy_state.StartedAt }}，重啟次數 {{ haproxy_info.RestartCount }}"
+  vars:
+    haproxy_info: "{{ (haproxy_inspect.stdout | from_json | first) if haproxy_inspect.rc == 0 else {} }}"
+    haproxy_state: "{{ haproxy_info.State | default({}) }}"
+
+- name: 讀取 HAProxy 版本
+  ansible.builtin.command:
+    argv: ["{{ haproxy_docker }}", exec, "{{ haproxy_container }}", haproxy, -v]
+  register: haproxy_version
+  changed_when: false
+  check_mode: false
+
+- name: 在容器內檢查設定
+  ansible.builtin.command:
+    argv: ["{{ haproxy_docker }}", exec, "{{ haproxy_container }}", haproxy, -c, -f, "{{ haproxy_cfg_in_container }}"]
+  register: haproxy_configtest
+  changed_when: false
+  check_mode: false
+  failed_when: false
+
+- name: 顯示版本與設定檢查結果
+  ansible.builtin.debug:
+    msg:
+      - "{{ haproxy_version.stdout_lines | first | default('') }}"
+      - "設定檢查：{{ 'OK' if haproxy_configtest.rc == 0 else '失敗 ' ~ haproxy_configtest.stderr }}"
+
+- name: 讀取送出的憑證
+  ansible.builtin.command:
+    argv: "{{ [haproxy_openssl, 's_client', '-connect', '127.0.0.1:' ~ haproxy_verify_port]
+      + (['-servername', haproxy_verify_server_name] if haproxy_verify_server_name | length > 0 else []) }}"
+    stdin: ""
+  register: haproxy_served
+  changed_when: false
+  check_mode: false
+  failed_when: false
+  when: haproxy_verify_port | int > 0
+
+- name: 讀取送出憑證的主旨與到期日
+  ansible.builtin.command:
+    argv: ["{{ haproxy_openssl }}", x509, -noout, -subject, -enddate]
+    stdin: "{{ haproxy_served.stdout | regex_search('-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----') }}"
+  register: haproxy_served_info
+  changed_when: false
+  check_mode: false
+  when:
+    - haproxy_served is not skipped
+    - haproxy_served.stdout is search('BEGIN CERTIFICATE')
+
+- name: 顯示憑證到期日
+  ansible.builtin.debug:
+    msg: >-
+      {{ '127.0.0.1:' ~ haproxy_verify_port ~ ' 送出的憑證：' ~ haproxy_served_info.stdout_lines | join('；')
+         if haproxy_served_info is not skipped
+         else '無法從 127.0.0.1:' ~ haproxy_verify_port ~ ' 取得憑證' }}
+  when: haproxy_verify_port | int > 0

@@ -1,0 +1,29 @@
+---
+# 通用 role：以 docker 執行的 HAProxy（前端 SSL 終結）。不寫死任何客戶路徑，差異放客戶 group_vars/haproxy.yml
+haproxy_compose_dir: ""          # 主機上 docker-compose.yml 所在目錄（必填，客戶各自不同）
+haproxy_container: haproxy       # docker-compose.yml 的 container_name
+haproxy_docker: docker           # 主機上的 docker 指令
+haproxy_cfg_in_container: /usr/local/etc/haproxy/haproxy.cfg   # 官方 image 的設定檔位置
+# 主機上掛進容器的憑證目錄，與 haproxy.cfg 的 bind ... crt 指到的檔名
+haproxy_cert_dir: "{{ haproxy_compose_dir }}/certs"
+haproxy_pem_name: server.pem
+# 舊的 pem 備份到這裡，不放在 haproxy_cert_dir：cfg 若改成 crt <目錄> 會把備份也載入
+haproxy_backup_dir: "{{ haproxy_compose_dir }}/cert-backup"
+
+# control node 上的來源檔：組成 HAProxy 要的單一 pem（伺服器憑證 + 中繼憑證 + 私鑰）
+haproxy_cert_src: ""             # 伺服器憑證
+haproxy_key_src: ""              # 私鑰（ansible-vault 加密，讀取時自動解密）
+haproxy_chain_src: ""            # 中繼憑證；空字串表示沒有（或已接在憑證檔後面）
+
+# 官方 image 2.4 起以非 root（haproxy）身分執行，pem 要讓容器內讀得到，所以預設 0644
+haproxy_pem_owner: root
+haproxy_pem_group: root
+haproxy_pem_mode: "0644"
+
+# 重新載入：官方 image 的 haproxy 是容器 PID 1（master-worker），送 HUP 會 graceful reload，不中斷既有連線
+haproxy_reload_signal: HUP
+
+# 大於 0 時，換完確認主機這個 port 送出的是新憑證；送出的不是新憑證也會 reload
+haproxy_verify_port: 443
+haproxy_verify_server_name: ""   # 用 SNI 確認時的主機名稱；空字串表示不帶 SNI
+haproxy_openssl: openssl         # 主機上的 openssl

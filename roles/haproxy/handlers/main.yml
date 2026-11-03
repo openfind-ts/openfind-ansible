@@ -1,0 +1,12 @@
+---
+# 先在容器內檢查設定與憑證，不通過就停，不會 reload 成一個載不到憑證的 HAProxy
+- name: Test haproxy config
+  ansible.builtin.command:
+    argv: ["{{ haproxy_docker }}", exec, "{{ haproxy_container }}", haproxy, -c, -f, "{{ haproxy_cfg_in_container }}"]
+  changed_when: false
+  listen: Reload haproxy
+
+- name: Reload haproxy
+  ansible.builtin.command:
+    argv: ["{{ haproxy_docker }}", kill, -s, "{{ haproxy_reload_signal }}", "{{ haproxy_container }}"]
+  changed_when: true

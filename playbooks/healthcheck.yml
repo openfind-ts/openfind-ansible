@@ -44,3 +44,12 @@
       ansible.builtin.include_role:
         name: ssp
         tasks_from: check
+
+- name: 健康檢查 HAProxy
+  hosts: haproxy
+  become: true
+  tasks:
+    - name: 執行 HAProxy check
+      ansible.builtin.include_role:
+        name: haproxy
+        tasks_from: check

@@ -1,0 +1,7 @@
+---
+# 這個客戶以 docker 執行的 HAProxy。標準值在 roles/haproxy/defaults/main.yml，不要重複寫在這裡
+haproxy_compose_dir: /opt/haproxy                     # 主機上 docker-compose.yml 所在目錄
+haproxy_cert_src: "{{ inventory_dir }}/files/haproxy.crt"
+haproxy_key_src: "{{ inventory_dir }}/files/haproxy.key"      # 先執行 ansible-vault encrypt files/haproxy.key
+haproxy_chain_src: "{{ inventory_dir }}/files/haproxy-ca.crt"  # 中繼憑證；沒有就刪掉這行
+haproxy_verify_server_name: www.example.com           # 用 SNI 確認送出的憑證

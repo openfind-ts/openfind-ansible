@@ -1,0 +1,4 @@
+---
+# 預設只做健康檢查（只讀不改）；換憑證請用 tasks_from: cert
+- name: 健康檢查
+  ansible.builtin.include_tasks: check.yml

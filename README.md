@@ -17,7 +17,8 @@ openfind-ansible/
 │   ├── m2k/ mg/ mo/ mb/ ssp/ # 產品 role：install、patch、cert、check
 │   ├── web_cert/             # 通用：Apache 換憑證
 │   ├── os_baseline/          # 通用：NTP、系統更新
-│   └── weakscan/             # 通用：作業系統層弱掃（sshd 演算法）、CVE 掃描
+│   ├── weakscan/             # 通用：作業系統層弱掃（sshd 演算法）、CVE 掃描
+│   └── haproxy/              # 通用：以 docker 執行的 HAProxy（換憑證、檢查）
 ├── playbooks/                # 依工作分：install、patch、renew_cert、healthcheck、weakscan_fix、os_baseline、cve_check
 ├── cves/                     # CVE 定義檔，一個 CVE 一個檔
 ├── inventories/_template/    # 客戶 inventory 範本，只有假資料
@@ -85,6 +86,9 @@ ansible-playbook -i ../customer-inventories/customer-a playbooks/cve_check.yml -
 | MO | TODO | 可用 | 可用 |
 | MB | TODO | 待補 SSL 設定檔路徑 | 可用 |
 | SSP | TODO | 換憑證方式不同，尚未定義 | 待補安裝路徑 |
+
+產品前面以 docker 執行的 HAProxy 放 inventory 的 `haproxy` 群組，用通用 role `haproxy`：
+`renew_cert.yml` 換憑證（graceful reload）、`healthcheck.yml` 檢查，見 [`roles/haproxy/README.md`](roles/haproxy/README.md)。
 
 `defaults/main.yml` 裡值為 `"TODO"` 的項目，用到時 role 會直接停下來報錯，不會帶著錯誤的值修改主機。
 

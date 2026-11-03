@@ -43,3 +43,15 @@
       ansible.builtin.include_role:
         name: mb
         tasks_from: cert
+
+# 以 docker 執行的 HAProxy（通用 role，不是產品）：graceful reload，仍逐台執行
+- name: 更換憑證 HAProxy
+  hosts: haproxy
+  become: true
+  serial: 1
+  max_fail_percentage: 0
+  tasks:
+    - name: 執行 HAProxy cert
+      ansible.builtin.include_role:
+        name: haproxy
+        tasks_from: cert

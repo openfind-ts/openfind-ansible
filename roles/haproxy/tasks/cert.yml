@@ -1,0 +1,194 @@
+---
+# 換 docker HAProxy 的憑證：組成單一 pem（憑證 + 中繼憑證 + 私鑰）放到掛進容器的目錄，檢查設定後 graceful reload
+- name: 確認沒有尚未補上的 TODO 值
+  ansible.builtin.assert:
+    that:
+      - item.value | length > 0
+      - item.value is not search('TODO')
+    fail_msg: "{{ item.key }} 尚未設定或仍是 TODO，請先在客戶的 group_vars/haproxy.yml 補上"
+    quiet: true
+  loop: "{{ checks | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  vars:
+    checks:
+      haproxy_compose_dir: "{{ haproxy_compose_dir }}"
+      haproxy_container: "{{ haproxy_container }}"
+      haproxy_cert_dir: "{{ haproxy_cert_dir }}"
+      haproxy_pem_name: "{{ haproxy_pem_name }}"
+      haproxy_backup_dir: "{{ haproxy_backup_dir }}"
+      haproxy_cert_src: "{{ haproxy_cert_src }}"
+      haproxy_key_src: "{{ haproxy_key_src }}"
+
+# ---- control node：確認新憑證可用，組出 pem ----
+- name: 讀取新憑證的主旨、到期日
+  ansible.builtin.command:
+    argv: [openssl, x509, -noout, -subject, -enddate, -checkend, "0", -in, "{{ haproxy_cert_src }}"]
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  check_mode: false
+  failed_when: haproxy_new_info.rc != 0
+  register: haproxy_new_info
+
+- name: 讀取新憑證的公鑰
+  ansible.builtin.command:
+    argv: [openssl, x509, -noout, -pubkey, -in, "{{ haproxy_cert_src }}"]
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  check_mode: false
+  register: haproxy_crt_pubkey
+
+- name: 讀取私鑰的公鑰
+  ansible.builtin.command:
+    argv: [openssl, pkey, -pubout]
+    stdin: "{{ lookup('ansible.builtin.unvault', haproxy_key_src) }}"
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  check_mode: false
+  no_log: true
+  register: haproxy_key_pubkey
+
+- name: 確認私鑰與憑證成對
+  ansible.builtin.assert:
+    that:
+      - haproxy_key_pubkey.stdout == haproxy_crt_pubkey.stdout
+    fail_msg: "{{ haproxy_key_src }} 與 {{ haproxy_cert_src }} 不是同一組，請確認檔案"
+    success_msg: "新憑證：{{ haproxy_new_info.stdout_lines | join('；') }}"
+
+# HAProxy 的 pem 順序：伺服器憑證、中繼憑證、私鑰
+- name: 組出新的 pem
+  ansible.builtin.set_fact:
+    haproxy_new_pem: >-
+      {{ ([lookup('ansible.builtin.file', haproxy_cert_src)]
+          + ([lookup('ansible.builtin.file', haproxy_chain_src)] if haproxy_chain_src | length > 0 else [])
+          + [lookup('ansible.builtin.unvault', haproxy_key_src)])
+         | map('trim') | join(haproxy_nl) ~ haproxy_nl }}
+    haproxy_new_crt: >-
+      {{ lookup('ansible.builtin.file', haproxy_cert_src)
+         | regex_search('-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----') | regex_replace('\s', '') }}
+  vars:
+    haproxy_nl: "\n"   # 雙引號才是真的換行；寫在 >- 裡的 '\n' 會變成字面上的反斜線 n
+  no_log: true
+
+- name: 決定備份檔名與確認指令
+  ansible.builtin.set_fact:
+    haproxy_backup_path: "{{ haproxy_backup_dir }}/{{ haproxy_pem_name }}.{{ now(fmt='%Y%m%d_%H%M%S') }}"
+    haproxy_s_client: "{{ [haproxy_openssl, 's_client', '-connect', '127.0.0.1:' ~ haproxy_verify_port]
+      + (['-servername', haproxy_verify_server_name] if haproxy_verify_server_name | length > 0 else []) }}"
+
+# ---- 主機：備份舊 pem、放上新 pem、容器內檢查設定 ----
+- name: 檢查主機上目前的 pem
+  ansible.builtin.stat:
+    path: "{{ haproxy_cert_dir }}/{{ haproxy_pem_name }}"
+    checksum_algorithm: sha1
+  register: haproxy_pem_stat
+
+- name: 更換 pem
+  when: not haproxy_pem_stat.stat.exists or haproxy_pem_stat.stat.checksum != (haproxy_new_pem | hash('sha1'))
+  block:
+    - name: 建立備份目錄
+      ansible.builtin.file:
+        path: "{{ haproxy_backup_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: 備份目前的 pem
+      ansible.builtin.copy:
+        src: "{{ haproxy_cert_dir }}/{{ haproxy_pem_name }}"
+        dest: "{{ haproxy_backup_path }}"
+        remote_src: true
+        mode: "0600"
+      # 預演時備份目錄還沒建，copy 會找不到目錄而失敗
+      when: haproxy_pem_stat.stat.exists and not ansible_check_mode
+
+    - name: 放上新的 pem
+      ansible.builtin.copy:
+        content: "{{ haproxy_new_pem }}"
+        dest: "{{ haproxy_cert_dir }}/{{ haproxy_pem_name }}"
+        owner: "{{ haproxy_pem_owner }}"
+        group: "{{ haproxy_pem_group }}"
+        mode: "{{ haproxy_pem_mode }}"
+      no_log: true
+      diff: false   # pem 含私鑰，避免 --diff 印出
+      register: haproxy_pem_put
+      notify: Reload haproxy
+
+    # 容器以唯讀方式掛載憑證目錄，檔案換掉後容器內立即看得到；這裡只檢查、不 reload
+    - name: 在容器內檢查設定與新憑證
+      ansible.builtin.command:
+        argv: ["{{ haproxy_docker }}", exec, "{{ haproxy_container }}", haproxy, -c, -f, "{{ haproxy_cfg_in_container }}"]
+      changed_when: false
+
+  rescue:
+    # 只有新 pem 已放上去才還原；備份或上傳本身失敗時主機上仍是舊檔
+    - name: 檢查失敗，還原舊的 pem
+      ansible.builtin.copy:
+        src: "{{ haproxy_backup_path }}"
+        dest: "{{ haproxy_cert_dir }}/{{ haproxy_pem_name }}"
+        remote_src: true
+        owner: "{{ haproxy_pem_stat.stat.pw_name }}"
+        group: "{{ haproxy_pem_stat.stat.gr_name }}"
+        mode: "{{ haproxy_pem_stat.stat.mode }}"
+      diff: false
+      register: haproxy_pem_restore
+      when:
+        - haproxy_pem_stat.stat.exists
+        - haproxy_pem_put is defined
+        - haproxy_pem_put is changed
+
+    - name: 停止
+      ansible.builtin.fail:
+        msg: >-
+          換憑證失敗：{{ ansible_failed_task.name }}（{{ ansible_failed_result.stderr | default(ansible_failed_result.msg) | default('') }}）。
+          {{ '主機上的 pem 已還原為 ' ~ haproxy_backup_path if haproxy_pem_restore is changed
+             else '主機上的 pem 沒有被換掉' if haproxy_pem_put is not defined or haproxy_pem_put is not changed
+             else '主機上原本沒有 pem，新 pem 留在原處' }}，HAProxy 沒有 reload
+
+# 不管檔案有沒有變動，實際送出的不是新憑證就 reload（例如檔案已被人換掉但沒 reload）
+- name: 檢查目前送出的憑證
+  ansible.builtin.command:
+    argv: "{{ haproxy_s_client }}"
+    stdin: ""
+  register: haproxy_served
+  check_mode: false
+  failed_when: false
+  changed_when: >-
+    (haproxy_served.stdout | regex_search('-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----')
+    | default('', true) | regex_replace('\s', '')) != haproxy_new_crt
+  when: haproxy_verify_port | int > 0
+  notify: Reload haproxy
+
+- name: 執行 reload
+  ansible.builtin.meta: flush_handlers
+
+- name: 確認已送出新憑證
+  ansible.builtin.command:
+    argv: "{{ haproxy_s_client }}"
+    stdin: ""
+  register: haproxy_verify
+  changed_when: false
+  failed_when: false
+  until: >-
+    (haproxy_verify.stdout | regex_search('-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----')
+    | default('', true) | regex_replace('\s', '')) == haproxy_new_crt
+  retries: 10
+  delay: 3
+  when:
+    - haproxy_verify_port | int > 0
+    - not ansible_check_mode
+
+- name: 新憑證沒有生效就停止
+  ansible.builtin.assert:
+    that: haproxy_verify is skipped or
+      (haproxy_verify.stdout | regex_search('-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----')
+      | default('', true) | regex_replace('\s', '')) == haproxy_new_crt
+    fail_msg: "127.0.0.1:{{ haproxy_verify_port }} 送出的仍不是新憑證，請人工確認（docker logs {{ haproxy_container }}）"
+    quiet: true
+  when:
+    - haproxy_verify_port | int > 0
+    - not ansible_check_mode
